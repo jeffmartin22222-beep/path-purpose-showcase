@@ -17,6 +17,8 @@ function fixture() {
   const html = '<!doctype html><html><title>Fixture</title><body>Fixture</body></html>';
   const sha256 = hash(html);
   write('lessons/demo/index.html', html);
+  const assets = [];
+  const packageSha256 = hash(JSON.stringify([{ path: 'lessons/demo/index.html', sha256 }]));
   const qa = {};
   const reviewedAt = '2026-10-31T12:00:00Z';
   for (const [gate, checkIds] of Object.entries(REQUIRED_CHECKS)) {
@@ -26,7 +28,7 @@ function fixture() {
     write(artifactPath, artifactBytes);
     const reportPath = prefix + 'report.json';
     const report = {
-      lessonId: 'demo', version: '1', gate, entrySha256: sha256,
+      lessonId: 'demo', version: '1', gate, entrySha256: sha256, packageSha256,
       reviewedBy: 'Fixture only', reviewedAt,
       checks: checkIds.map(id => ({
         id, result: 'passed', notes: 'Synthetic fixture',
@@ -41,7 +43,7 @@ function fixture() {
   }
   const lesson = {
     id: 'demo', title: 'Fixture', grade: '8', subject: 'Science', course: 'Biology',
-    unit: 'Cells', version: '1', entry: 'lessons/demo/index.html', sha256,
+    unit: 'Cells', version: '1', entry: 'lessons/demo/index.html', sha256, assets, packageSha256,
     rights: { status: 'cleared', basis: 'original', notes: 'Synthetic fixture',
       reviewedBy: 'Fixture only', reviewedAt },
     qa
@@ -92,4 +94,13 @@ test('rejects missing physical iPad metadata', () => withFixture(f => {
   delete report.checks.find(x => x.id === 'ipad').deviceModel;
   f.write(reportPath, JSON.stringify(report));
   assert.throws(() => validateCatalog(f.root), /Physical device test metadata required/);
+}));
+
+test('rejects unlisted lesson assets', () => withFixture(f => {
+  f.write('lessons/demo/unreviewed-video.mp4', 'Unreviewed asset');
+  assert.throws(() => validateCatalog(f.root), /unlisted files/);
+}));
+test('rejects a forged package digest', () => withFixture(f => {
+  f.lesson.packageSha256 = '0'.repeat(64); f.save();
+  assert.throws(() => validateCatalog(f.root), /Package SHA-256 mismatch/);
 }));
