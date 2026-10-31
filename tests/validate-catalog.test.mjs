@@ -59,8 +59,10 @@ function withFixture(fn) {
   const f = fixture();
   try { fn(f); } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
 }
-test('empty approved catalog is allowed (no invented approvals)', () => withFixture(f => {
+test('empty approved catalog is allowed only when no draft files are public', () => withFixture(f => {
   f.catalog.lessons = []; f.save();
+  fs.rmSync(path.join(f.root, 'lessons'), { recursive: true, force: true });
+  fs.rmSync(path.join(f.root, 'evidence'), { recursive: true, force: true });
   assert.equal(validateCatalog(f.root).approvedLessons, 0);
 }));
 test('fully structured fixture passes', () => withFixture(f => {
