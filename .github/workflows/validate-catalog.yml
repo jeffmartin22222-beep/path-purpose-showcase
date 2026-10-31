@@ -26,3 +26,5 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Exercise mobile and tablet layouts in real browser engine
         run: node tests/browser-smoke.mjs
+      - name: Verify nonempty catalog and reject unsafe lesson dependencies
+        run: node tests/browser-fixture.mjs
