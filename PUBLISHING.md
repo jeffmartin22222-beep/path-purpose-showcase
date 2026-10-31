@@ -6,7 +6,7 @@ The public Showcase is a **prototype**. Its Biology interactive is illustrative 
 
 ## Four-pass QA
 
-Every approved lesson must have a local student-facing entry `lessons/<id>/index.html`, a matching SHA-256 digest in the catalog, original or documented licensed content rights, and four signed-off QA gates. Each gate's `evidence` array points to one or more JSON reports in `evidence/<id>/<gate>/`. Reports must match the lesson ID, version, HTML hash, reviewer and UTC timestamp, and contain check results with notes and at least one hashed supporting artifact stored under the same evidence directory. The validator checks the files, required checks and hashes; it **cannot** establish that a human actually performed a test or that a report is truthful.
+Every approved lesson must have a local student-facing entry `lessons/<id>/index.html`, a matching SHA-256 digest in the catalog, an `assets` array listing and hashing **every** additional lesson file, a `packageSha256` digest of the sorted `[{path,sha256}, ...]` entry/asset manifest, original or documented licensed content rights, and four signed-off QA gates. Each gate's `evidence` array points to one or more JSON reports in `evidence/<id>/<gate>/`. Reports must match the lesson ID, version, HTML hash, full package hash, reviewer and UTC timestamp, and contain check results with notes and at least one hashed supporting artifact stored under the same evidence directory. The validator checks the files, required checks and hashes; it **cannot** establish that a human actually performed a test or that a report is truthful.
 
 | Gate | Required checks |
 | --- | --- |
@@ -25,6 +25,7 @@ For `iphone` and `ipad`, reports must include `deviceModel`, `osVersion`, and UT
   "version": "1",
   "gate": "technical",
   "entrySha256": "<SHA-256 OF APPROVED HTML>",
+  "packageSha256": "<SHA-256 OF SORTED ENTRY/ASSET MANIFEST>",
   "reviewedBy": "<ACTUAL REVIEWER>",
   "reviewedAt": "<UTC ISO DATE>",
   "checks": [
@@ -49,7 +50,7 @@ node --test tests/*.test.mjs
 node scripts/validate-catalog.mjs
 ```
 
-Both use Node 22 built-ins only. Negative tests deliberately create synthetic approvals in a temporary directory; these fixtures never enter the real catalog. The validator rejects changed HTML, missing artifacts, traversal, incomplete physical-device metadata, and missing rights clearance.
+Both use Node 22 built-ins only. Negative tests deliberately create synthetic approvals in a temporary directory; these fixtures never enter the real catalog. The validator rejects changed HTML or assets, missing artifacts, traversal, incomplete physical-device metadata, and missing rights clearance.
 
 ## Release criteria and blockers
 
