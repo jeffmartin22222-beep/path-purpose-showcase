@@ -1,0 +1,95 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { validateCatalog, REQUIRED_CHECKS } from '../scripts/validate-catalog.mjs';
+
+const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+function fixture() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-showcase-'));
+  const write = (relative, content) => {
+    const target = path.join(root, relative);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, content);
+  };
+  const html = '<!doctype html><html><title>Fixture</title><body>Fixture</body></html>';
+  const sha256 = hash(html);
+  write('lessons/demo/index.html', html);
+  const qa = {};
+  const reviewedAt = '2026-10-31T12:00:00Z';
+  for (const [gate, checkIds] of Object.entries(REQUIRED_CHECKS)) {
+    const prefix = 'evidence/demo/' + gate + '/';
+    const artifactPath = prefix + 'test-record.txt';
+    const artifactBytes = 'Synthetic unit-test evidence ONLY; not a real approval';
+    write(artifactPath, artifactBytes);
+    const reportPath = prefix + 'report.json';
+    const report = {
+      lessonId: 'demo', version: '1', gate, entrySha256: sha256,
+      reviewedBy: 'Fixture only', reviewedAt,
+      checks: checkIds.map(id => ({
+        id, result: 'passed', notes: 'Synthetic fixture',
+        ...(['iphone', 'ipad'].includes(id) ? {
+          deviceModel: 'Fixture device', osVersion: 'Fixture OS', testedAt: reviewedAt
+        } : {})
+      })),
+      artifacts: [{ path: artifactPath, sha256: hash(artifactBytes) }]
+    };
+    write(reportPath, JSON.stringify(report));
+    qa[gate] = { status: 'passed', reviewedBy: 'Fixture only', reviewedAt, evidence: [reportPath] };
+  }
+  const lesson = {
+    id: 'demo', title: 'Fixture', grade: '8', subject: 'Science', course: 'Biology',
+    unit: 'Cells', version: '1', entry: 'lessons/demo/index.html', sha256,
+    rights: { status: 'cleared', basis: 'original', notes: 'Synthetic fixture',
+      reviewedBy: 'Fixture only', reviewedAt },
+    qa
+  };
+  const catalog = { schemaVersion: '1.0.0', generatedAt: null, lessons: [lesson] };
+  const save = () => write('catalog/approved.json', JSON.stringify(catalog));
+  save();
+  return { root, lesson, catalog, save, write };
+}
+function withFixture(fn) {
+  const f = fixture();
+  try { fn(f); } finally { fs.rmSync(f.root, { recursive: true, force: true }); }
+}
+test('empty approved catalog is allowed (no invented approvals)', () => withFixture(f => {
+  f.catalog.lessons = []; f.save();
+  assert.equal(validateCatalog(f.root).approvedLessons, 0);
+}));
+test('fully structured fixture passes', () => withFixture(f => {
+  assert.equal(validateCatalog(f.root).approvedLessons, 1);
+}));
+test('rejects missing required QA check', () => withFixture(f => {
+  const reportPath = 'evidence/demo/technical/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
+  report.checks = report.checks.filter(x => x.id !== 'ipad');
+  f.write(reportPath, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Required QA check missing/);
+}));
+test('rejects unverified content changes', () => withFixture(f => {
+  f.write('lessons/demo/index.html', '<h1>Changed after approval</h1>');
+  assert.throws(() => validateCatalog(f.root), /SHA-256 mismatch/);
+}));
+test('rejects nonexistent evidence artifacts', () => withFixture(f => {
+  fs.unlinkSync(path.join(f.root, 'evidence/demo/content/test-record.txt'));
+  assert.throws(() => validateCatalog(f.root), /ENOENT/);
+}));
+test('rejects path traversal', () => withFixture(f => {
+  f.lesson.qa.content.evidence = ['evidence/demo/content/../../../../outside.json'];
+  f.save();
+  assert.throws(() => validateCatalog(f.root), /Unsafe file path/);
+}));
+test('rejects missing rights clearance', () => withFixture(f => {
+  f.lesson.rights.status = 'pending'; f.save();
+  assert.throws(() => validateCatalog(f.root), /Missing cleared content rights/);
+}));
+test('rejects missing physical iPad metadata', () => withFixture(f => {
+  const reportPath = 'evidence/demo/technical/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
+  delete report.checks.find(x => x.id === 'ipad').deviceModel;
+  f.write(reportPath, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Physical device test metadata required/);
+}));
