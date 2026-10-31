@@ -34,9 +34,22 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(base, { waitUntil: 'networkidle' });
-  await page.getByText('No lessons have passed all four QA reviews yet').waitFor();
-  assert.equal(await page.locator('#catalog-entries article').count(), 0,
-    'An empty approved catalog must not display any released lessons');
+  // The catalog starts empty, but this smoke test must also pass when a real
+  // approved lesson is added. Never hard-code "zero approved lessons" as a release rule.
+  const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog/approved.json'), 'utf8'));
+  await page.waitForFunction(expected => {
+    const status = document.getElementById('catalog-status')?.textContent || '';
+    return expected === 0 ? status.includes('No lessons have passed all four QA reviews yet')
+      : status.includes(expected + ' approved lesson');
+  }, catalog.lessons.length);
+  const cards = page.locator('#catalog-entries article');
+  assert.equal(await cards.count(), catalog.lessons.length,
+    'Showcase must render exactly the approved catalog entries');
+  const visibleLinks = await page.locator('#catalog-entries a.catalog-link').evaluateAll(
+    links => links.map(link => new URL(link.href).pathname)
+  );
+  assert.deepEqual(visibleLinks, catalog.lessons.map(lesson => '/' + lesson.entry),
+    'Catalog links must match the reviewed lesson entry paths exactly');
 
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
@@ -67,13 +80,71 @@ try {
   });
   const tabletPage = await tablet.newPage();
   await tabletPage.goto(base, { waitUntil: 'networkidle' });
-  await tabletPage.getByText('No lessons have passed all four QA reviews yet').waitFor();
+  await tabletPage.waitForFunction(expected => {
+    const status = document.getElementById('catalog-status')?.textContent || '';
+    return expected === 0 ? status.includes('No lessons have passed all four QA reviews yet')
+      : status.includes(expected + ' approved lesson');
+  }, catalog.lessons.length);
   const tabletWidth = await tabletPage.evaluate(() =>
     [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
   assert.ok(tabletWidth[0] <= tabletWidth[1] + 1, 'Tablet horizontal overflow');
+  // Exercise each real approved entry on both viewport sizes. This is browser
+  // emulation, NOT a substitute for physical iOS Safari, reviewer QA, or licensing.
+  // Block external network dependencies: student lessons must work self-contained.
+  for (const lesson of catalog.lessons) {
+    for (const device of [
+      { name: 'phone', width: 390, height: 844 },
+      { name: 'tablet', width: 820, height: 1180 }
+    ]) {
+      const lessonContext = await browser.newContext({
+        viewport: { width: device.width, height: device.height },
+        isMobile: true, hasTouch: true, reducedMotion: 'reduce'
+      });
+      try {
+        const external = [];
+        await lessonContext.route('**/*', route => {
+          const url = route.request().url();
+          if (/^https?:/.test(url) && new URL(url).origin !== new URL(base).origin) {
+            external.push(url);
+            return route.abort();
+          }
+          return route.continue();
+        });
+        const lessonPage = await lessonContext.newPage();
+        const lessonErrors = [];
+        const failedLocal = [];
+        lessonPage.on('pageerror', error => lessonErrors.push(error.message));
+        lessonPage.on('response', response => {
+          if (response.url().startsWith(base) && response.status() >= 400)
+            failedLocal.push(response.status() + ' ' + response.url());
+        });
+        const response = await lessonPage.goto(base + '/' + lesson.entry, {
+          waitUntil: 'load', timeout: 30000
+        });
+        assert.equal(response?.status(), 200, lesson.id + ' entry HTTP status');
+        await lessonPage.waitForTimeout(250);
+        const snapshot = await lessonPage.evaluate(() => ({
+          title: document.title,
+          textLength: document.body?.innerText?.trim().length || 0,
+          scrollWidth: document.documentElement.scrollWidth,
+          clientWidth: document.documentElement.clientWidth
+        }));
+        assert.ok(snapshot.textLength >= 20, lesson.id + ' has insufficient visible content');
+        assert.ok(snapshot.scrollWidth <= snapshot.clientWidth + 1,
+          lesson.id + ' horizontal overflow on ' + device.name + ': ' + JSON.stringify(snapshot));
+        assert.deepEqual(external, [], lesson.id + ' depends on external network resources');
+        assert.deepEqual(failedLocal, [], lesson.id + ' has missing local assets');
+        assert.deepEqual(lessonErrors, [], lesson.id + ' has uncaught browser errors');
+      } finally {
+        await lessonContext.close();
+      }
+    }
+  }
   await tablet.close();
   await context.close();
-  console.log('PASS: Chromium emulated phone/tablet layout, catalog fail-closed, and interactive behavior.');
+  console.log('PASS: Chromium emulated phone/tablet layout, catalog rendering, and interactive behavior.');
+  console.log('Approved lesson browser checks: ' + catalog.lessons.length +
+    ' lesson(s) on phone and tablet. Empty catalog means no lesson runtime was exercised.');
   console.log('Physical iPhone/iPad Safari, video playback, captions and screen-reader QA remain REQUIRED.');
 } finally {
   await browser?.close();
