@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { validateCatalog, REQUIRED_CHECKS } from '../scripts/validate-catalog.mjs';
 
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -103,4 +105,11 @@ test('rejects unlisted lesson assets', () => withFixture(f => {
 test('rejects a forged package digest', () => withFixture(f => {
   f.lesson.packageSha256 = '0'.repeat(64); f.save();
   assert.throws(() => validateCatalog(f.root), /Package SHA-256 mismatch/);
+}));
+
+test('reviewed package import dry-run does not write to Showcase', () => withFixture(f => {
+  const importer = fileURLToPath(new URL('../scripts/import-approved-package.mjs', import.meta.url));
+  const run = spawnSync(process.execPath, [importer, f.root], { encoding: 'utf8' });
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /DRY RUN/);
 }));
