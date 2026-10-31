@@ -59,6 +59,8 @@ The first two commands use Node 22 built-ins only. The browser smoke test uses P
 
 A passing browser smoke test with an empty catalog **does not mean any curriculum lesson has been browser-tested**. The synthetic fixture is not curriculum and does not constitute physical iPhone/iPad QA or content approval.
 
+See [physical-device acceptance protocol](docs/device-acceptance-protocol.md) for the actual iPhone/iPad, VoiceOver, video and staging review matrix. That protocol is a checklist, **not** a completed test report.
+
 ## Release criteria and blockers
 
 - Verify production artifact transfer mechanism and credentials/permissions without exposing secrets.
