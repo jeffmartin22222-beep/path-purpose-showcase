@@ -90,7 +90,9 @@
         "entry",
         "sha256",
         "rights",
-        "qa"
+        "qa",
+        "assets",
+        "packageSha256"
       ],
       "properties": {
         "id": {
@@ -184,6 +186,27 @@
               "$ref": "#/$defs/gate"
             }
           }
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha"
+              }
+            }
+          }
+        },
+        "packageSha256": {
+          "$ref": "#/$defs/sha"
         }
       }
     }
