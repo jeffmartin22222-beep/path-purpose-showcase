@@ -52,9 +52,12 @@ node --test tests/*.test.mjs
 node scripts/validate-catalog.mjs
 # Browser smoke test (requires installed playwright and Chromium):
 node tests/browser-smoke.mjs
+node tests/browser-fixture.mjs
 ```
 
-The first two commands use Node 22 built-ins only. The browser smoke test uses Playwright Chromium (installed by CI) to exercise the actual Showcase at phone and tablet viewport sizes, verify no horizontal overflow, test the empty-catalog state and interactive reset/feedback. Browser emulation is **not** physical iOS Safari or iPad QA. Negative tests deliberately create synthetic approvals in a temporary directory; these fixtures never enter the real catalog. The validator rejects changed HTML or assets, missing artifacts, traversal, incomplete physical-device metadata, and missing rights clearance.
+The first two commands use Node 22 built-ins only. The browser smoke test uses Playwright Chromium (installed by CI) to exercise the actual Showcase at phone and tablet viewport sizes, verify no horizontal overflow, test both empty and populated catalogs, and exercise interactive reset/feedback. For each genuinely approved lesson, it loads the lesson at both sizes and rejects missing local assets, external network dependencies, runtime errors and horizontal overflow. The synthetic browser fixture runner checks the populated-catalog path and confirms that external and missing assets fail, without placing any fake approvals in the repository. Browser emulation is **not** physical iOS Safari or iPad QA. Negative tests deliberately create synthetic approvals in a temporary directory; these fixtures never enter the real catalog. The validator rejects changed HTML or assets, missing artifacts, traversal, incomplete physical-device metadata, and missing rights clearance.
+
+A passing browser smoke test with an empty catalog **does not mean any curriculum lesson has been browser-tested**. The synthetic fixture is not curriculum and does not constitute physical iPhone/iPad QA or content approval.
 
 ## Release criteria and blockers
 
