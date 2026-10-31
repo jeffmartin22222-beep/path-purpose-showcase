@@ -35,10 +35,27 @@ function readFile(root, relative, prefix) {
     relative.startsWith(prefix), 'Unsafe file path: ' + String(relative));
   const absolute = path.resolve(root, ...relative.split('/'));
   requireThat(absolute.startsWith(path.resolve(root) + path.sep), 'Path escapes repository');
+  const resolved = fs.realpathSync(absolute);
+  requireThat(resolved.startsWith(fs.realpathSync(root) + path.sep),
+    'File resolves outside repository: ' + relative);
   const stat = fs.lstatSync(absolute);
   requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.size > 0 && stat.size <= 10 * 1024 * 1024,
     'Missing, empty, symlinked, or oversized file: ' + relative);
   return fs.readFileSync(absolute);
+}
+function lessonFiles(root, id) {
+  const base = path.join(root, 'lessons', id);
+  const found = [];
+  function walk(dir, prefix) {
+    for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+      const relative = prefix + item.name;
+      if (item.isDirectory()) walk(path.join(dir, item.name), relative + '/');
+      else if (item.isFile()) found.push(relative);
+      else throw new Error('Symlink or unsupported file in lesson package: ' + relative);
+    }
+  }
+  walk(base, 'lessons/' + id + '/');
+  return found.sort();
 }
 function checkAttestation(obj, label) {
   requireThat(isObject(obj) && nonempty(obj.reviewedBy) && timestamp(obj.reviewedAt),
@@ -62,6 +79,23 @@ export function validateCatalog(root = DEFAULT_ROOT) {
     const html = readFile(root, lesson.entry, 'lessons/' + lesson.id + '/');
     requireThat(/^[a-f0-9]{64}$/.test(lesson.sha256 || '') && sha256(html) === lesson.sha256,
       'Lesson content SHA-256 mismatch: ' + lesson.id);
+    requireThat(Array.isArray(lesson.assets), 'Missing assets manifest: ' + lesson.id);
+    const files = [{ path: lesson.entry, sha256: lesson.sha256 }];
+    const seen = new Set([lesson.entry]);
+    for (const asset of lesson.assets) {
+      requireThat(isObject(asset) && typeof asset.path === 'string' &&
+        asset.path.startsWith('lessons/' + lesson.id + '/') &&
+        /^[a-f0-9]{64}$/.test(asset.sha256 || '') &&
+        !seen.has(asset.path), 'Invalid or duplicate asset: ' + lesson.id);
+      seen.add(asset.path);
+      const bytes = readFile(root, asset.path, 'lessons/' + lesson.id + '/');
+      requireThat(sha256(bytes) === asset.sha256, 'Asset SHA-256 mismatch: ' + asset.path);
+      files.push({ path: asset.path, sha256: asset.sha256 });
+    }
+    requireThat(JSON.stringify([...seen].sort()) === JSON.stringify(lessonFiles(root, lesson.id)),
+      'Lesson package contains unlisted files: ' + lesson.id);
+    const digest = sha256(JSON.stringify(files.sort((a, b) => a.path.localeCompare(b.path))));
+    requireThat(lesson.packageSha256 === digest, 'Package SHA-256 mismatch: ' + lesson.id);
     const rights = lesson.rights;
     checkAttestation(rights, lesson.id + ' rights');
     requireThat(rights.status === 'cleared' &&
@@ -85,6 +119,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         requireThat(isObject(report) && report.lessonId === lesson.id &&
           report.version === lesson.version && report.gate === gate &&
           report.entrySha256 === lesson.sha256 &&
+          report.packageSha256 === lesson.packageSha256 &&
           report.reviewedBy === approval.reviewedBy &&
           report.reviewedAt === approval.reviewedAt,
           'Evidence does not match approved lesson/reviewer: ' + evidencePath);
