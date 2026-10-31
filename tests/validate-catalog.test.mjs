@@ -113,3 +113,12 @@ test('reviewed package import dry-run does not write to Showcase', () => withFix
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /DRY RUN/);
 }));
+
+test('rejects orphaned lesson folders when the catalog is empty', () => withFixture(f => {
+  f.catalog.lessons = []; f.save();
+  assert.throws(() => validateCatalog(f.root), /Unapproved or unsupported lessons directory entry/);
+}));
+test('rejects unlisted evidence files that could leak private review materials', () => withFixture(f => {
+  f.write('evidence/demo/technical/private-notes.txt', 'Do not publish');
+  assert.throws(() => validateCatalog(f.root), /Unreferenced evidence file/);
+}));
