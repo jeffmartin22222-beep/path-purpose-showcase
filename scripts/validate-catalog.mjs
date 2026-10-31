@@ -28,7 +28,7 @@ function timestamp(value) {
 function sha256(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');
 }
-function readFile(root, relative, prefix) {
+function readFile(root, relative, prefix, maxBytes = 10 * 1024 * 1024) {
   requireThat(typeof relative === 'string' &&
     /^[a-zA-Z0-9._/-]+$/.test(relative) &&
     !relative.split('/').some(segment => segment === '..' || segment === '.' || segment === '') &&
@@ -39,7 +39,7 @@ function readFile(root, relative, prefix) {
   requireThat(resolved.startsWith(fs.realpathSync(root) + path.sep),
     'File resolves outside repository: ' + relative);
   const stat = fs.lstatSync(absolute);
-  requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.size > 0 && stat.size <= 10 * 1024 * 1024,
+  requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.size > 0 && stat.size <= maxBytes,
     'Missing, empty, symlinked, or oversized file: ' + relative);
   return fs.readFileSync(absolute);
 }
@@ -88,13 +88,13 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         /^[a-f0-9]{64}$/.test(asset.sha256 || '') &&
         !seen.has(asset.path), 'Invalid or duplicate asset: ' + lesson.id);
       seen.add(asset.path);
-      const bytes = readFile(root, asset.path, 'lessons/' + lesson.id + '/');
+      const bytes = readFile(root, asset.path, 'lessons/' + lesson.id + '/', 95 * 1024 * 1024);
       requireThat(sha256(bytes) === asset.sha256, 'Asset SHA-256 mismatch: ' + asset.path);
       files.push({ path: asset.path, sha256: asset.sha256 });
     }
     requireThat(JSON.stringify([...seen].sort()) === JSON.stringify(lessonFiles(root, lesson.id)),
       'Lesson package contains unlisted files: ' + lesson.id);
-    const digest = sha256(JSON.stringify(files.sort((a, b) => a.path.localeCompare(b.path))));
+    const digest = sha256(JSON.stringify(files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)));
     requireThat(lesson.packageSha256 === digest, 'Package SHA-256 mismatch: ' + lesson.id);
     const rights = lesson.rights;
     checkAttestation(rights, lesson.id + ' rights');
