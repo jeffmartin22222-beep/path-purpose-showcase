@@ -66,6 +66,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
   requireThat(isObject(catalog) && catalog.schemaVersion === '1.0.0' &&
     Array.isArray(catalog.lessons), 'Invalid catalog schema version or lessons');
   const ids = new Set();
+  const referencedEvidenceFiles = new Set();
   for (const lesson of catalog.lessons) {
     requireThat(isObject(lesson) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(lesson.id || ''),
       'Invalid lesson ID');
@@ -115,6 +116,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         const prefix = 'evidence/' + lesson.id + '/' + gate + '/';
         requireThat(typeof evidencePath === 'string' && evidencePath.endsWith('.json'),
           'Evidence must be a JSON report: ' + gate);
+        referencedEvidenceFiles.add(evidencePath);
         const report = JSON.parse(readFile(root, evidencePath, prefix).toString('utf8'));
         requireThat(isObject(report) && report.lessonId === lesson.id &&
           report.version === lesson.version && report.gate === gate &&
@@ -139,6 +141,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         for (const artifact of report.artifacts) {
           requireThat(isObject(artifact) && /^[a-f0-9]{64}$/.test(artifact.sha256 || ''),
             'Invalid evidence artifact hash');
+          referencedEvidenceFiles.add(artifact.path);
           const bytes = readFile(root, artifact.path, prefix);
           requireThat(sha256(bytes) === artifact.sha256, 'Evidence artifact hash mismatch: ' + artifact.path);
         }
@@ -146,6 +149,33 @@ export function validateCatalog(root = DEFAULT_ROOT) {
       for (const check of required) {
         requireThat(checks.has(check), 'Required QA check missing: ' + lesson.id + '/' + gate + '/' + check);
       }
+    }
+  }
+  // Fail closed if any unapproved lesson or unreferenced evidence reaches the public tree.
+  // A valid empty catalog must not silently publish orphaned private draft files.
+  for (const directory of ['lessons', 'evidence']) {
+    const location = path.join(root, directory);
+    if (!fs.existsSync(location)) continue;
+    for (const item of fs.readdirSync(location, { withFileTypes: true })) {
+      requireThat(item.isDirectory() && ids.has(item.name),
+        'Unapproved or unsupported ' + directory + ' directory entry: ' + item.name);
+    }
+  }
+  const evidenceRoot = path.join(root, 'evidence');
+  if (fs.existsSync(evidenceRoot)) {
+    const found = [];
+    function walkEvidence(dir, prefix) {
+      for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+        const relative = prefix + '/' + item.name;
+        if (item.isDirectory()) walkEvidence(path.join(dir, item.name), relative);
+        else if (item.isFile()) found.push(relative);
+        else throw new Error('Symlink or unsupported evidence file: ' + relative);
+      }
+    }
+    walkEvidence(evidenceRoot, 'evidence');
+    for (const relative of found) {
+      requireThat(referencedEvidenceFiles.has(relative),
+        'Unreferenced evidence file: ' + relative);
     }
   }
   return { approvedLessons: catalog.lessons.length };
