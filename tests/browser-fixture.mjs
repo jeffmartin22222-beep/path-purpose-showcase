@@ -54,6 +54,17 @@ try {
   assert.notEqual(missing.status, 0, 'Missing local asset must fail browser smoke checks');
   assert.match(missing.stderr, /has missing local assets/);
   console.log('PASS: missing local lesson asset is rejected.');
+
+  // The public root index exists, so a normal 200 response would otherwise
+  // mask this unapproved dependency. The lesson may load ONLY hashed files
+  // explicitly listed in its own manifest, never other repository content.
+  fs.writeFileSync(lessonPath, html.replace('</body>',
+    '<img src="/index.html" alt="Unreviewed same-origin file"></body>'));
+  const unlisted = run();
+  assert.notEqual(unlisted.status, 0,
+    'Unlisted same-origin file must fail even if it exists and returns HTTP 200');
+  assert.match(unlisted.stderr, /requested unlisted same-origin assets/);
+  console.log('PASS: unlisted same-origin lesson dependencies are rejected.');
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }
