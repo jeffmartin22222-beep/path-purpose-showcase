@@ -45,6 +45,10 @@ This example is incomplete and will fail validation, as intended.
 
 **Current limitation (2026-10-31):** The curriculum builder reported *Inside the Cell v0.6*, including four original playable narrated MP4 drafts with caption/transcript files and successful offline Chromium media checks. The narration is still a synthetic placeholder and needs professional replacement, and caption synchronization, independent science review, physical iPhone/iPad Safari testing, LMS integration, and release authorization remain outstanding. This is **not** an approved Showcase package. The production ZIP is not accessible to this repository through a verified private transfer; a link in another task's output does not establish an authenticated handoff. No source files or QA attestations have been imported. The approved catalog remains empty.
 
+## Public artifact security lint and draft PR staging
+
+The validator now runs a conservative public package audit that rejects common secret tokens, teacher-only answer keys/roster filenames, and external resource/link references in lesson HTML and CSS. This is defense-in-depth, not a guarantee of privacy, original rights or safe media. See [public package security](docs/public-package-security.md). The optional trusted-runner staging script `scripts/stage-reviewed-package.mjs` can create a **draft review PR** from an explicitly reviewed private bundle when an authorized runner has `GH_TOKEN` and git push credentials. It cannot obtain source artifacts or authenticate on its own; no automatic connection exists. See [production handoff](docs/production-handoff.md).
+
 ## Running the checks
 
 ```sh
