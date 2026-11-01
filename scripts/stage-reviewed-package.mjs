@@ -60,13 +60,38 @@ function main() {
   const lesson = JSON.parse(fs.readFileSync(path.join(source, 'catalog/approved.json'), 'utf8')).lessons[0];
   const reviewBranch = 'feature/review-' + lesson.id + '-' + lesson.packageSha256.slice(0, 12);
 
+  // Offline preflight can now verify the complete producer signature and digest
+  // without a GitHub token, private ledger, branch write or public file copy.
+  // Do not describe an unsigned dry run as a verified producer handoff.
+  const provenanceRequested = recordFlags.length > 0 || keyFlags.length > 0;
+  requireThat(!provenanceRequested ||
+    (recordFlags.length === 1 && keyFlags.length === 1 && digestFlags.length === 1),
+    'Signed preflight requires trusted digest, detached record and trusted public key together');
+  requireThat(!apply || provenanceRequested,
+    'Apply requires independently signed producer record and trusted public key');
+  let signed = null;
+  if (provenanceRequested) {
+    const recordPath = fs.realpathSync(recordFlags[0].slice('--signed-handoff-record='.length));
+    const keyPath = fs.realpathSync(keyFlags[0].slice('--trusted-producer-public-key='.length));
+    for (const privatePath of [recordPath, keyPath]) {
+      requireThat(privatePath !== realRoot && !privatePath.startsWith(realRoot + path.sep) &&
+        privatePath !== source && !privatePath.startsWith(source + path.sep),
+        'Signed handoff record and trusted key must be independent of bundle and public checkout');
+    }
+    signed = verifySignedHandoff(recordPath, keyPath, {
+      repository: repo, lessonId: lesson.id, lessonVersion: lesson.version,
+      bundleSha256: fingerprint.sha256
+    });
+  }
+
   // The existing importer validates the destination and copies only referenced files.
   command(process.execPath, ['scripts/import-approved-package.mjs', source]);
   if (!apply) {
     console.log('DRY RUN: package validated; draft PR branch would be', reviewBranch);
     console.log('Private bundle SHA-256:', fingerprint.sha256,
       'files:', fingerprint.fileCount, 'bytes:', fingerprint.totalBytes);
-    console.log('For apply, obtain the expected digest independently from the trusted producer record.');
+    console.log(signed ? 'Signed producer handoff verified; human QA and rights remain unverified.' :
+      'Unsigned structural dry run only; producer provenance NOT verified.');
     console.log('No GitHub calls, commits, or file copies were made.');
     return;
   }
@@ -76,19 +101,6 @@ function main() {
   // immutable producer record before passing --expected-bundle-sha256.
   requireThat(process.env.GH_TOKEN && process.env.GH_TOKEN.trim(),
     'GH_TOKEN required in private runner environment; never place it in this repository');
-  requireThat(recordFlags.length === 1 && keyFlags.length === 1,
-    'Apply requires independently signed producer record and trusted public key');
-  const recordPath = fs.realpathSync(recordFlags[0].slice('--signed-handoff-record='.length));
-  const keyPath = fs.realpathSync(keyFlags[0].slice('--trusted-producer-public-key='.length));
-  for (const privatePath of [recordPath, keyPath]) {
-    requireThat(privatePath !== realRoot && !privatePath.startsWith(realRoot + path.sep) &&
-      privatePath !== source && !privatePath.startsWith(source + path.sep),
-      'Signed handoff record and trusted key must be independent of bundle and public checkout');
-  }
-  const signed = verifySignedHandoff(recordPath, keyPath, {
-    repository: repo, lessonId: lesson.id, lessonVersion: lesson.version,
-    bundleSha256: fingerprint.sha256
-  });
   const remote = command('git', ['remote', 'get-url', 'origin']);
   requireThat([
     'https://github.com/' + repo + '.git',
