@@ -12,9 +12,13 @@
       "const": "1.0.0"
     },
     "generatedAt": {
-      "type": [
-        "string",
-        "null"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/timestamp"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "lessons": {
@@ -27,7 +31,8 @@
   "$defs": {
     "timestamp": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$"
     },
     "sha": {
       "type": "string",
