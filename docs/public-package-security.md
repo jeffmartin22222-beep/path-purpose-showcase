@@ -36,3 +36,22 @@ keys. This prevents an unreviewed `teacherAnswerKey` or private metadata extensi
 silently bypassing the student-asset audit. The JSON schema also disallows extra fields in
 these structures. These checks are defense-in-depth only: human review must still inspect
 all text, screenshots, media, rights and evidence authenticity before staging or release.
+
+
+## Public QA evidence schema hardening (2026-11-01)
+
+The four-gate validator now fails closed on unknown keys in each public QA report,
+individual check, and hashed artifact reference, not only the catalog manifest.
+Reports may contain only `lessonId`, `version`, `gate`, `entrySha256`,
+`packageSha256`, `reviewedBy`, `reviewedAt`, `checks`, and `artifacts`.
+Checks may contain only `id`, `result`, `notes`, `deviceModel`,
+`osVersion`, and `testedAt`; artifact references only `path` and `sha256`.
+Duplicate check identifiers or artifact references in a report are rejected.
+The catalog's optional `generatedAt` must be null or a UTC timestamp.
+
+Place richer technical observations in separately redacted, hashed evidence
+artifacts, not in unreviewed report fields. This blocks a class of accidental
+private metadata disclosure; it **does not** prove reports are genuine or
+that artifacts are free of private content. Independent reviewers must still
+inspect each public artifact and physical-device result. Six synthetic negative
+tests cover unexpected metadata, duplicates, and invalid generation metadata.
