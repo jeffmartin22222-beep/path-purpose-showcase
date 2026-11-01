@@ -34,3 +34,7 @@ Test on Inside the Cell, Grade 8 math and a contrasting ELA/SS lesson, but apply
 ### Review chronology hardening (2026-11-01)
 
 The benchmark validator now rejects non-public placeholder competitor references and impossible review ordering. Synthetic tests cover reserved domains, IP literals, future approval, benchmark-before-QA/rights, and comparator observation after signoff. These are structural checks only: a genuine public URL is not proof of source relevance, a claimed review time is not independently authenticated, and CI cannot validate physical-device test truth. Keep PR #1 draft and the approved catalog empty until independent evidence and owner release authorization exist.
+
+### Device evidence ordering (2026-11-01)
+
+Public rights and four-pass QA signoff timestamps must not be in the future (five-minute clock-skew tolerance). Physical iPhone/iPad `testedAt` must be valid UTC and no later than the technical QA review signoff. This blocks a record claiming the reviewer approved an iOS test before it occurred, but does not authenticate the device, tester, screenshot, or result. Independent physical-device evidence remains a release blocker.
