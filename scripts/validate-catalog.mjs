@@ -66,6 +66,8 @@ function lessonFiles(root, id) {
 function checkAttestation(obj, label) {
   requireThat(isObject(obj) && nonempty(obj.reviewedBy) && timestamp(obj.reviewedAt),
     'Missing reviewer or UTC review timestamp: ' + label);
+  requireThat(Date.parse(obj.reviewedAt) <= Date.now() + 5 * 60 * 1000,
+    'Future-dated rights or QA approval: ' + label);
 }
 export function validateCatalog(root = DEFAULT_ROOT) {
   const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog/approved.json'), 'utf8'));
@@ -162,6 +164,8 @@ export function validateCatalog(root = DEFAULT_ROOT) {
           if (gate === 'technical' && ['iphone', 'ipad'].includes(check.id)) {
             requireThat(nonempty(check.deviceModel) && nonempty(check.osVersion) &&
               timestamp(check.testedAt), 'Physical device test metadata required: ' + check.id);
+            requireThat(Date.parse(check.testedAt) <= Date.parse(approval.reviewedAt),
+              'Physical device test occurred after QA signoff: ' + check.id);
           }
         }
         requireThat(Array.isArray(report.artifacts) && report.artifacts.length > 0,
