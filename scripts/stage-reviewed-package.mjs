@@ -87,6 +87,8 @@ function main() {
   command('git', ['switch', '-c', reviewBranch]);
   command(process.execPath, ['scripts/import-approved-package.mjs', source,
     '--apply', '--acknowledge-public-reviewed']);
+  requireThat(fingerprintReviewedBundle(source).sha256 === fingerprint.sha256,
+    'Private handoff changed during staging; refusing to push');
   command(process.execPath, ['scripts/validate-catalog.mjs']);
   const unitTests = fs.readdirSync(path.join(root, 'tests'))
     .filter(x => x.endsWith('.test.mjs')).sort().map(x => 'tests/' + x);
