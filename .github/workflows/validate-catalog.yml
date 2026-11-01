@@ -19,6 +19,8 @@ jobs:
           node-version: '22'
       - name: Check import tool syntax
         run: node --check scripts/import-approved-package.mjs
+      - name: Check symlink-safe import path syntax
+        run: node --check scripts/safe-import-path.mjs
       - name: Check reviewed-package staging tool syntax
         run: node --check scripts/stage-reviewed-package.mjs
       - name: Check private bundle fingerprint tool syntax
