@@ -27,7 +27,8 @@ const SECRET_PATTERNS = [
   /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/,
   /\bgithub_pat_[A-Za-z0-9_]{20,}\b/,
   /\bsk-(?:proj-)?[A-Za-z0-9_-]{32,}\b/,
-  /\b(?:api[_ -]?key|client[_ -]?secret|access[_ -]?token|password)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{12,}/i
+  /\b(?:api[_ -]?key|client[_ -]?secret|access[_ -]?token|password)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{12,}/i,
+  /\b(?:api[_ -]?key|client[_ -]?secret|access[_ -]?token|password)\s*,\s*["']?[A-Za-z0-9_./+=-]{12,}/i
 ];
 const INTERNAL_CONTENT = /\b(?:teacher[- ]only|answer[- ]key|student[- ]roster)\b/i;
 const EXTERNAL_MARKUP = [
