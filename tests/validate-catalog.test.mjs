@@ -68,7 +68,7 @@ function fixture() {
     comparisons: ['subject.com', 'schoolsplp-lincoln', 'edmentum', 'edgenuity']
       .map(provider => provider === 'subject.com'
         ? { provider, evidenceType: 'public_documentation',
-          referenceUrl: 'https://example.invalid/synthetic-test-reference',
+          referenceUrl: 'https://subject.com/',
           checkedAt: reviewedAt,
           notes: 'Synthetic fixture only; this URL is NOT real competitor evidence.' }
         : { provider, evidenceType: 'unavailable',
@@ -435,4 +435,33 @@ test('benchmark rejects all-unavailable competitive references', () => withFixtu
     }));
   });
   assert.throws(() => validateCatalog(f.root), /lacks a verifiable comparison reference/);
+}));
+
+test('benchmark rejects placeholder, reserved and IP-only comparison URLs', () => {
+  for (const url of [
+    'https://example.invalid/synthetic-test-reference',
+    'https://docs.example.com/reference',
+    'https://localhost/benchmark',
+    'https://127.0.0.1/reference',
+    'https://198.51.100.3/reference'
+  ]) withFixture(f => {
+    changeBenchmark(f, r => { r.comparisons[0].referenceUrl = url; });
+    assert.throws(() => validateCatalog(f.root), /Missing dated HTTPS comparison source/);
+  });
+});
+test('benchmark rejects future-dated human approval', () => withFixture(f => {
+  changeBenchmark(f, r => { r.reviewedAt = '2099-01-01T12:00:00Z'; });
+  assert.throws(() => validateCatalog(f.root), /Benchmark review timestamp is in the future/);
+}));
+test('benchmark cannot predate four-pass QA approval', () => withFixture(f => {
+  changeBenchmark(f, r => { r.reviewedAt = '2026-10-30T12:00:00Z'; });
+  assert.throws(() => validateCatalog(f.root), /Benchmark predates required rights or four-pass QA review/);
+}));
+test('benchmark cannot predate rights clearance', () => withFixture(f => {
+  f.lesson.rights.reviewedAt = '2026-11-01T12:00:00Z'; f.save();
+  assert.throws(() => validateCatalog(f.root), /Benchmark predates required rights or four-pass QA review/);
+}));
+test('benchmark cannot approve comparison checked after signoff', () => withFixture(f => {
+  changeBenchmark(f, r => { r.comparisons[0].checkedAt = '2026-11-01T12:00:00Z'; });
+  assert.throws(() => validateCatalog(f.root), /Comparison checked after benchmark signoff/);
 }));
