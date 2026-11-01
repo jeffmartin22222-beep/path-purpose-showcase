@@ -70,3 +70,9 @@ or is licensed for commercial use. Binary media and screenshots still require
 human inspection and actual browser/mobile playback; the separate four-pass
 QA and owner authorization remain mandatory. This does not establish a
 private producer connection or authorize publishing.
+
+### Deferred inline HTML network lint (2026-11-01)
+
+Public lesson HTML now rejects remote `http://` and `https://` URL literals inside inline `<script>` bodies and quoted `on*` event handlers. This closes a gap where a click-triggered or delayed request could evade initial-load Chromium smoke checks, even though standalone JS files were already scanned. Synthetic tests cover delayed script literals, module imports, quoted event handlers and a permitted local interactive control.
+
+This is **not** a JavaScript interpreter or comprehensive outbound-network guarantee: concatenated/encoded URLs, dynamic construction, unquoted event attributes, indirect code execution, and requests triggered only by complex student flows can evade static lint. Human security review and real interactive browser network testing remain required. No lesson was approved or published by this change.
