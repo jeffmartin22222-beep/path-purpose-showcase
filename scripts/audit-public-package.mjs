@@ -20,7 +20,7 @@ const LESSON_EXTENSIONS = new Set([
 const EVIDENCE_EXTENSIONS = new Set([
   '.json', '.txt', '.md', '.csv', '.png', '.jpg', '.jpeg', '.webp', '.avif'
 ]);
-const TEXT_FILE = /\.(?:html?|js|mjs|css|json|txt|md|vtt|srt|svg|xml)$/i;
+const TEXT_FILE = /\.(?:html?|js|mjs|css|json|txt|md|csv|vtt|srt|svg|xml)$/i;
 const SECRET_PATTERNS = [
   /-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----/,
   /\bAKIA[0-9A-Z]{16}\b/,
