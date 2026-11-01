@@ -252,3 +252,16 @@ test('staging refuses apply without separately signed provenance even with diges
   assert.notEqual(run.status, 0);
   assert.match(run.stderr, /independently signed producer record and trusted public key/);
 }));
+
+test('rejects unreviewed extra catalog metadata, including teacher answer keys', () => withFixture(f => {
+  f.lesson.teacherAnswerKey = 'Synthetic private answer; must never publish'; f.save();
+  assert.throws(() => validateCatalog(f.root), /Unexpected public catalog field/);
+}));
+test('rejects unexpected nested review fields', () => withFixture(f => {
+  f.lesson.qa.technical.teacherOnly = 'Synthetic internal note'; f.save();
+  assert.throws(() => validateCatalog(f.root), /Unexpected public catalog field/);
+}));
+test('scans catalog notes for credential-like strings', () => withFixture(f => {
+  f.lesson.rights.notes = 'api_key:SensitiveToken123456'; f.save();
+  assert.throws(() => validateCatalog(f.root), /Potential secret or teacher-only material/);
+}));

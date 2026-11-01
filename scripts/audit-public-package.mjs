@@ -20,6 +20,7 @@ const LESSON_EXTENSIONS = new Set([
 const EVIDENCE_EXTENSIONS = new Set([
   '.json', '.txt', '.md', '.csv', '.png', '.jpg', '.jpeg', '.webp', '.avif'
 ]);
+const PRIVATE_JSON_FIELDS = /"(?:teacher(?:[_-]?(?:only|answer(?:[_-]?key)?|key))|answer[_-]?key|student[_-]?roster|private[_-]?notes|credentials?|secrets?)"\s*:/i;
 const TEXT_FILE = /\.(?:html?|js|mjs|css|json|txt|md|csv|vtt|srt|svg|xml)$/i;
 const SECRET_PATTERNS = [
   /-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----/,
@@ -67,14 +68,15 @@ export function auditPublicPackage(root, paths) {
     if (typeof relative !== 'string' ||
         !/^[a-zA-Z0-9._/-]+$/.test(relative) ||
         relative.split('/').some(s => !s || s === '.' || s === '..') ||
-        !/^(?:lessons|evidence)\//.test(relative)) {
+        !(relative === 'catalog/approved.json' || /^(?:lessons|evidence)\//.test(relative))) {
       throw new Error('Unsafe public package path: ' + relative);
     }
     if (BLOCKED_NAME.test(relative)) {
       throw new Error('Forbidden public package filename: ' + relative);
     }
     const extension = path.extname(relative).toLowerCase();
-    const allowed = relative.startsWith('lessons/') ? LESSON_EXTENSIONS : EVIDENCE_EXTENSIONS;
+    const allowed = relative === 'catalog/approved.json' ? new Set(['.json']) :
+      relative.startsWith('lessons/') ? LESSON_EXTENSIONS : EVIDENCE_EXTENSIONS;
     if (!allowed.has(extension)) {
       throw new Error('Unsupported public package file type: ' + relative);
     }
@@ -87,7 +89,9 @@ export function auditPublicPackage(root, paths) {
     if (!TEXT_FILE.test(relative)) continue;
     const data = fs.readFileSync(absolute, 'utf8');
     if (SECRET_PATTERNS.some(pattern => pattern.test(data)) ||
-        (relative.startsWith('lessons/') && INTERNAL_CONTENT.test(data))) {
+        ((relative.startsWith('lessons/') || relative === 'catalog/approved.json') &&
+          INTERNAL_CONTENT.test(data)) ||
+        (/\.json$/i.test(relative) && PRIVATE_JSON_FIELDS.test(data))) {
       throw new Error('Potential secret or teacher-only material in public package: ' + relative);
     }
     if (/\.html?$/i.test(relative) &&

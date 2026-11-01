@@ -26,3 +26,13 @@ An automated pass must **never** be treated as authorization to merge or deploy.
 ## Remaining integration blocker
 
 The private producer storage location, authenticated integration runner and release approval process are not configured. The importer is a local reviewed-package preparation tool; it is not a background sync or authenticated upload. See [production handoff](production-handoff.md) and [issue #2](https://github.com/jeffmartin22222-beep/path-purpose-showcase/issues/2).
+
+## Public catalog metadata boundary (2026-11-01)
+
+The approved catalog JSON is itself a public asset. The validator now rejects unrecognized
+fields at the catalog, lesson, asset, rights, QA-gate and gate-approval levels, and audits
+`catalog/approved.json` for credential-like values, teacher-only wording and sensitive JSON
+keys. This prevents an unreviewed `teacherAnswerKey` or private metadata extension from
+silently bypassing the student-asset audit. The JSON schema also disallows extra fields in
+these structures. These checks are defense-in-depth only: human review must still inspect
+all text, screenshots, media, rights and evidence authenticity before staging or release.

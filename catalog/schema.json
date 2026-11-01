@@ -47,7 +47,8 @@
         "reviewedAt": {
           "$ref": "#/$defs/timestamp"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "gate": {
       "type": "object",
@@ -75,7 +76,8 @@
             "type": "string"
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "lesson": {
       "type": "object",
@@ -162,7 +164,8 @@
             "reviewedAt": {
               "$ref": "#/$defs/timestamp"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "qa": {
           "type": "object",
@@ -185,7 +188,8 @@
             "experience": {
               "$ref": "#/$defs/gate"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "assets": {
           "type": "array",
@@ -202,13 +206,15 @@
               "sha256": {
                 "$ref": "#/$defs/sha"
               }
-            }
+            },
+            "additionalProperties": false
           }
         },
         "packageSha256": {
           "$ref": "#/$defs/sha"
         }
-      }
+      },
+      "additionalProperties": false
     }
   }
 }

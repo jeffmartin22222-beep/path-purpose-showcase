@@ -18,6 +18,10 @@ function requireThat(ok, message) {
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
+function allowOnlyKeys(value, allowed, label) {
+  requireThat(isObject(value) && Object.keys(value).every(key => allowed.includes(key)),
+    'Unexpected public catalog field: ' + label);
+}
 function nonempty(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -66,10 +70,13 @@ export function validateCatalog(root = DEFAULT_ROOT) {
   const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog/approved.json'), 'utf8'));
   requireThat(isObject(catalog) && catalog.schemaVersion === '1.0.0' &&
     Array.isArray(catalog.lessons), 'Invalid catalog schema version or lessons');
+  allowOnlyKeys(catalog, ['schemaVersion', 'generatedAt', 'lessons'], 'catalog root');
   const ids = new Set();
   const referencedEvidenceFiles = new Set();
   const publicFiles = new Set();
   for (const lesson of catalog.lessons) {
+    allowOnlyKeys(lesson, ['id', 'title', 'grade', 'subject', 'course', 'unit',
+      'version', 'entry', 'sha256', 'assets', 'packageSha256', 'rights', 'qa'], 'lesson');
     requireThat(isObject(lesson) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(lesson.id || ''),
       'Invalid lesson ID');
     requireThat(!ids.has(lesson.id), 'Duplicate lesson ID: ' + lesson.id);
@@ -87,6 +94,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
     publicFiles.add(lesson.entry);
     const seen = new Set([lesson.entry]);
     for (const asset of lesson.assets) {
+      allowOnlyKeys(asset, ['path', 'sha256'], lesson.id + ' asset');
       requireThat(isObject(asset) && typeof asset.path === 'string' &&
         asset.path.startsWith('lessons/' + lesson.id + '/') &&
         /^[a-f0-9]{64}$/.test(asset.sha256 || '') &&
@@ -102,6 +110,8 @@ export function validateCatalog(root = DEFAULT_ROOT) {
     const digest = sha256(JSON.stringify(files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)));
     requireThat(lesson.packageSha256 === digest, 'Package SHA-256 mismatch: ' + lesson.id);
     const rights = lesson.rights;
+    allowOnlyKeys(rights, ['status', 'basis', 'notes', 'licenseReference',
+      'reviewedBy', 'reviewedAt'], lesson.id + ' rights');
     checkAttestation(rights, lesson.id + ' rights');
     requireThat(rights.status === 'cleared' &&
       ['original', 'licensed'].includes(rights.basis) && nonempty(rights.notes),
@@ -110,8 +120,11 @@ export function validateCatalog(root = DEFAULT_ROOT) {
       requireThat(nonempty(rights.licenseReference), 'Missing license reference: ' + lesson.id);
     }
     requireThat(isObject(lesson.qa), 'Missing QA: ' + lesson.id);
+    allowOnlyKeys(lesson.qa, Object.keys(REQUIRED_CHECKS), lesson.id + ' QA');
     for (const [gate, required] of Object.entries(REQUIRED_CHECKS)) {
       const approval = lesson.qa[gate];
+      allowOnlyKeys(approval, ['status', 'reviewedBy', 'reviewedAt', 'evidence'],
+        lesson.id + ' ' + gate + ' approval');
       checkAttestation(approval, lesson.id + ' ' + gate);
       requireThat(approval.status === 'passed' && Array.isArray(approval.evidence) &&
         approval.evidence.length > 0, 'Missing passed gate/evidence: ' + lesson.id + ' ' + gate);
@@ -187,7 +200,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
   // Static defense-in-depth: reject common secrets, teacher-only filenames and
   // external active HTML/CSS references before any approved package is public.
   // This cannot replace human review of screenshots, binaries or content rights.
-  auditPublicPackage(root, [...publicFiles]);
+  auditPublicPackage(root, ['catalog/approved.json', ...publicFiles]);
   return { approvedLessons: catalog.lessons.length };
 }
 

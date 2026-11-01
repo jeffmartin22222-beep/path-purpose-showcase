@@ -149,3 +149,14 @@ test('allows local manifest-resolvable fetch and student progress persistence', 
     "const response = await fetch('./lesson.json'); localStorage.setItem('progress', '1');");
   assert.equal(auditPublicPackage(root, ['lessons/demo/player.mjs']).auditedFiles, 1);
 }));
+
+// Public catalog metadata must be scanned even when no lesson files are approved.
+test('audits catalog JSON and blocks teacher keys or credentials', () => fixture(({root,write}) => {
+  write('catalog/approved.json', JSON.stringify({schemaVersion:'1.0.0',lessons:[]}));
+  assert.equal(auditPublicPackage(root, ['catalog/approved.json']).auditedFiles, 1);
+  for (const extra of [{teacherAnswerKey:'Never public'}, {notes:'api_key:SensitiveToken123456'}]) {
+    write('catalog/approved.json', JSON.stringify({schemaVersion:'1.0.0',lessons:[],...extra}));
+    assert.throws(() => auditPublicPackage(root, ['catalog/approved.json']),
+      /Potential secret or teacher-only material/);
+  }
+}));
