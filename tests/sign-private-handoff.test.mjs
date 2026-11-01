@@ -122,7 +122,7 @@ test('synthetic reviewed-package fixture signs to a detached private record, ref
     comparisons: ['subject.com', 'schoolsplp-lincoln', 'edmentum', 'edgenuity']
       .map(provider => provider === 'subject.com'
         ? { provider, evidenceType: 'public_documentation',
-          referenceUrl: 'https://example.invalid/synthetic-test-reference',
+          referenceUrl: 'https://subject.com/',
           checkedAt: reviewedAt,
           notes: 'Synthetic fixture only; this URL is NOT real competitor evidence.' }
         : { provider, evidenceType: 'unavailable',
