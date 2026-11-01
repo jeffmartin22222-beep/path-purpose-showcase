@@ -15,6 +15,9 @@ const pr = 'https://github.com/jeffmartin22222-beep/path-purpose-showcase/pull/9
 function fixture(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-ledger-'));
   const ledger = path.join(dir, 'replay.json');
+  // Synthetic test fixture only. Production initialization requires a
+  // deliberate owner-controlled bootstrap, never an implicit staging reset.
+  fs.writeFileSync(ledger, JSON.stringify({ schemaVersion: 1, records: [] }));
   try { fn(ledger); }
   finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
@@ -57,6 +60,7 @@ test('non-PR result cannot mark a handoff staged', () => fixture(ledger => {
 test('symlink ledger is rejected', () => fixture(ledger => {
   const target = path.join(path.dirname(ledger), 'target.json');
   fs.writeFileSync(target, '{"schemaVersion":1,"records":[]}');
+  fs.unlinkSync(ledger);
   fs.symlinkSync(target, ledger);
   assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => pr), /regular file|symlink/);
 }));
@@ -99,7 +103,20 @@ test('invalid staged PR URL in existing ledger fails closed', () => fixture(ledg
 }));
 
 test('dangling ledger symlink fails closed instead of resetting replay history', () => fixture(ledger => {
+  fs.unlinkSync(ledger);
   fs.symlinkSync(path.join(path.dirname(ledger), 'missing-target'), ledger);
   assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => pr), /non-symlink/);
   assert.equal(fs.lstatSync(ledger).isSymbolicLink(), true);
+}));
+
+test('deleted replay ledger fails closed rather than silently resetting history', () => fixture(ledger => {
+  fs.unlinkSync(ledger);
+  let called = false;
+  assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => {
+    called = true;
+    return pr;
+  }), /ledger missing; provision explicitly/);
+  assert.equal(called, false);
+  assert.equal(fs.existsSync(ledger), false);
+  assert.equal(fs.existsSync(ledger + '.lock'), false);
 }));
