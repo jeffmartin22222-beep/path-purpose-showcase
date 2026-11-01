@@ -71,6 +71,8 @@ export function validateCatalog(root = DEFAULT_ROOT) {
   requireThat(isObject(catalog) && catalog.schemaVersion === '1.0.0' &&
     Array.isArray(catalog.lessons), 'Invalid catalog schema version or lessons');
   allowOnlyKeys(catalog, ['schemaVersion', 'generatedAt', 'lessons'], 'catalog root');
+  requireThat(catalog.generatedAt === undefined || catalog.generatedAt === null ||
+    timestamp(catalog.generatedAt), 'Invalid catalog generation timestamp');
   const ids = new Set();
   const referencedEvidenceFiles = new Set();
   const publicFiles = new Set();
@@ -136,6 +138,9 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         referencedEvidenceFiles.add(evidencePath);
         publicFiles.add(evidencePath);
         const report = JSON.parse(readFile(root, evidencePath, prefix).toString('utf8'));
+        allowOnlyKeys(report, ['lessonId', 'version', 'gate', 'entrySha256',
+          'packageSha256', 'reviewedBy', 'reviewedAt', 'checks', 'artifacts'],
+          evidencePath + ' report');
         requireThat(isObject(report) && report.lessonId === lesson.id &&
           report.version === lesson.version && report.gate === gate &&
           report.entrySha256 === lesson.sha256 &&
@@ -145,9 +150,13 @@ export function validateCatalog(root = DEFAULT_ROOT) {
           'Evidence does not match approved lesson/reviewer: ' + evidencePath);
         requireThat(Array.isArray(report.checks), 'Missing checks: ' + evidencePath);
         for (const check of report.checks) {
+          allowOnlyKeys(check, ['id', 'result', 'notes', 'deviceModel',
+            'osVersion', 'testedAt'], evidencePath + ' check');
           requireThat(isObject(check) && nonempty(check.id) &&
             check.result === 'passed' && nonempty(check.notes),
             'Unverified check: ' + evidencePath);
+          requireThat(!checks.has(check.id),
+            'Duplicate QA check: ' + evidencePath + '/' + check.id);
           checks.add(check.id);
           if (gate === 'technical' && ['iphone', 'ipad'].includes(check.id)) {
             requireThat(nonempty(check.deviceModel) && nonempty(check.osVersion) &&
@@ -156,9 +165,14 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         }
         requireThat(Array.isArray(report.artifacts) && report.artifacts.length > 0,
           'No supporting evidence artifacts: ' + evidencePath);
+        const reportArtifacts = new Set();
         for (const artifact of report.artifacts) {
+          allowOnlyKeys(artifact, ['path', 'sha256'], evidencePath + ' artifact');
           requireThat(isObject(artifact) && /^[a-f0-9]{64}$/.test(artifact.sha256 || ''),
             'Invalid evidence artifact hash');
+          requireThat(!reportArtifacts.has(artifact.path),
+            'Duplicate evidence artifact: ' + evidencePath);
+          reportArtifacts.add(artifact.path);
           referencedEvidenceFiles.add(artifact.path);
           publicFiles.add(artifact.path);
           const bytes = readFile(root, artifact.path, prefix);
