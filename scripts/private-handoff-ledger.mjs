@@ -71,12 +71,13 @@ export function withPrivateHandoffLedger(ledgerPath, handoff, work) {
   try {
     fs.writeSync(lock, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }));
     fs.fsyncSync(lock);
-    let ledger = { schemaVersion: 1, records: [] };
-    if (fs.existsSync(ledgerPath)) {
-      const stat = fs.statSync(ledgerPath);
-      if (stat.size > 16 * 1024 * 1024) throw new Error('Private replay ledger exceeds size limit');
-      ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
-    }
+    // A missing ledger could mean deleted replay history. Never silently
+    // bootstrap an empty ledger on a staging attempt: fail closed instead.
+    if (!fs.existsSync(ledgerPath))
+      throw new Error('Private replay ledger missing; provision explicitly before staging');
+    const stat = fs.statSync(ledgerPath);
+    if (stat.size > 16 * 1024 * 1024) throw new Error('Private replay ledger exceeds size limit');
+    const ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
     validateExistingLedger(ledger);
     if (ledger.records.some(r =>
       r.sourceArtifactId === handoff.sourceArtifactId ||
