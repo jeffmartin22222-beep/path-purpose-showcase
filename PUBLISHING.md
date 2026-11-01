@@ -21,6 +21,7 @@ For `iphone` and `ipad`, reports must include `deviceModel`, `osVersion`, and UT
 
 ```json
 {
+  "schemaVersion": "1.1.0",
   "lessonId": "inside-the-cell",
   "version": "1",
   "gate": "technical",
@@ -29,7 +30,7 @@ For `iphone` and `ipad`, reports must include `deviceModel`, `osVersion`, and UT
   "reviewedBy": "<ACTUAL REVIEWER>",
   "reviewedAt": "<UTC ISO DATE>",
   "checks": [
-    {"id": "ipad", "result": "passed", "notes": "<OBSERVATIONS>", "deviceModel": "<ACTUAL DEVICE>", "osVersion": "<ACTUAL OS>", "testedAt": "<UTC ISO DATE>"}
+    {"id": "ipad", "result": "passed", "notes": "<OBSERVATIONS>", "artifactPaths": ["evidence/inside-the-cell/technical/<REDACTED RECORD>"], "deviceModel": "<ACTUAL DEVICE>", "osVersion": "<ACTUAL OS>", "testedAt": "<UTC ISO DATE>"}
   ],
   "artifacts": [
     {"path": "evidence/inside-the-cell/technical/<REDACTED RECORD>", "sha256": "<SHA-256 OF RECORD>"}
@@ -76,3 +77,7 @@ See [physical-device acceptance protocol](docs/device-acceptance-protocol.md) fo
 - Obtain real, redacted content/rights, pedagogy, technical device and experience evidence for the first approved lesson.
 - Test iPhone and iPad in Safari and Chrome, video playback, captions, accessibility and persistence.
 - Obtain owner approval before merging/deploying to the live Showcase.
+
+### Per-check evidence traceability (QA report schema 1.1.0; 2026-11-01)
+
+Each public four-pass QA report now requires `schemaVersion: "1.1.0"` and each passed check must have a nonempty, duplicate-free `artifactPaths` array. Every path must resolve to a hashed file in that report's `artifacts` list; unlinked artifacts and missing references are rejected. Physical `iphone` and `ipad` checks must point to **distinct** artifacts rather than sharing one generic screenshot or note. This is a **structural traceability requirement**, not authentication of a tester or proof that a screenshot came from a physical device. Synthetic fixtures use synthetic records only. Independent human audit, genuine Safari/VoiceOver/video/persistence tests and owner approval remain mandatory.

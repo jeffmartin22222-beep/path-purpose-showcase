@@ -36,22 +36,26 @@ function fixture() {
   const reviewedAt = '2026-10-31T12:00:00Z';
   for (const [gate, checkIds] of Object.entries(REQUIRED_CHECKS)) {
     const prefix = 'evidence/demo/' + gate + '/';
-    const artifactPath = prefix + 'test-record.txt';
-    const artifactBytes = 'Synthetic unit-test evidence ONLY; not a real approval';
-    write(artifactPath, artifactBytes);
+    const artifacts = checkIds.map(id => {
+      const artifactPath = prefix + id + '-test-record.txt';
+      const artifactBytes = 'Synthetic unit-test evidence ONLY for ' + id + '; not a real approval';
+      write(artifactPath, artifactBytes);
+      return { path: artifactPath, sha256: hash(artifactBytes) };
+    });
     const reportPath = prefix + 'report.json';
     const report = {
-      lessonId: 'demo', version: '1', gate, entrySha256: sha256, packageSha256,
+      schemaVersion: '1.1.0', lessonId: 'demo', version: '1', gate, entrySha256: sha256, packageSha256,
       reviewedBy: 'Fixture only', reviewedAt,
       checks: checkIds.map(id => ({
         id, result: 'passed', notes: 'Synthetic fixture',
+        artifactPaths: [prefix + id + '-test-record.txt'],
         ...(['iphone', 'ipad'].includes(id) ? {
           deviceModel: id === 'iphone' ? 'Test iPhone 16' : 'Test iPad Air',
           osVersion: id === 'iphone' ? 'iOS 18.0' : 'iPadOS 18.0',
           browserName: 'Safari', testMethod: 'physical_device', testedAt: reviewedAt
         } : {})
       })),
-      artifacts: [{ path: artifactPath, sha256: hash(artifactBytes) }]
+      artifacts
     };
     write(reportPath, JSON.stringify(report));
     qa[gate] = { status: 'passed', reviewedBy: 'Fixture only', reviewedAt, evidence: [reportPath] };
@@ -125,7 +129,7 @@ test('rejects unverified content changes', () => withFixture(f => {
   assert.throws(() => validateCatalog(f.root), /SHA-256 mismatch/);
 }));
 test('rejects nonexistent evidence artifacts', () => withFixture(f => {
-  fs.unlinkSync(path.join(f.root, 'evidence/demo/content/test-record.txt'));
+  fs.unlinkSync(path.join(f.root, 'evidence/demo/content/standards-test-record.txt'));
   assert.throws(() => validateCatalog(f.root), /ENOENT/);
 }));
 test('rejects path traversal', () => withFixture(f => {
@@ -548,3 +552,52 @@ test('rejects future-dated rights and QA signoffs', () => {
     assert.throws(() => validateCatalog(f.root), /Future-dated rights or QA approval/);
   });
 });
+
+test('rejects unversioned or outdated QA evidence reports', () => withFixture(f => {
+  const p = 'evidence/demo/content/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, p), 'utf8'));
+  delete report.schemaVersion;
+  f.write(p, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Evidence does not match approved lesson/);
+}));
+test('rejects missing or duplicate per-check artifact references', () => {
+  for (const mutation of [
+    check => { delete check.artifactPaths; },
+    check => { check.artifactPaths = []; },
+    check => { check.artifactPaths.push(check.artifactPaths[0]); }
+  ]) withFixture(f => {
+    const p = 'evidence/demo/content/report.json';
+    const report = JSON.parse(fs.readFileSync(path.join(f.root, p), 'utf8'));
+    mutation(report.checks[0]);
+    f.write(p, JSON.stringify(report));
+    assert.throws(() => validateCatalog(f.root), /Missing or duplicate check-linked QA artifacts/);
+  });
+});
+test('rejects check references not pinned to hashed report artifacts', () => withFixture(f => {
+  const p = 'evidence/demo/content/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, p), 'utf8'));
+  report.checks[0].artifactPaths = ['evidence/demo/content/nonexistent.txt'];
+  f.write(p, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /QA check references unverified artifact/);
+}));
+test('rejects unrelated unlinked QA artifacts', () => withFixture(f => {
+  const p = 'evidence/demo/content/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, p), 'utf8'));
+  const relative = 'evidence/demo/content/unlinked.txt';
+  f.write(relative, 'Synthetic unlinked evidence');
+  report.artifacts.push({ path: relative, sha256: hash('Synthetic unlinked evidence') });
+  f.write(p, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Unlinked QA evidence artifact/);
+}));
+test('rejects reused iPhone and iPad physical evidence', () => withFixture(f => {
+  const p = 'evidence/demo/technical/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, p), 'utf8'));
+  report.checks.find(x => x.id === 'ipad').artifactPaths =
+    [...report.checks.find(x => x.id === 'iphone').artifactPaths];
+  // The original iPad artifact is still linked by another check to isolate
+  // the physical-device distinction from the unlinked-artifact rule.
+  report.checks.find(x => x.id === 'video').artifactPaths.push(
+    'evidence/demo/technical/ipad-test-record.txt');
+  f.write(p, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /iPhone and iPad must have distinct physical test artifacts/);
+}));

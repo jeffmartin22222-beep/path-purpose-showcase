@@ -141,10 +141,10 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         referencedEvidenceFiles.add(evidencePath);
         publicFiles.add(evidencePath);
         const report = JSON.parse(readFile(root, evidencePath, prefix).toString('utf8'));
-        allowOnlyKeys(report, ['lessonId', 'version', 'gate', 'entrySha256',
+        allowOnlyKeys(report, ['schemaVersion', 'lessonId', 'version', 'gate', 'entrySha256',
           'packageSha256', 'reviewedBy', 'reviewedAt', 'checks', 'artifacts'],
           evidencePath + ' report');
-        requireThat(isObject(report) && report.lessonId === lesson.id &&
+        requireThat(isObject(report) && report.schemaVersion === '1.1.0' && report.lessonId === lesson.id &&
           report.version === lesson.version && report.gate === gate &&
           report.entrySha256 === lesson.sha256 &&
           report.packageSha256 === lesson.packageSha256 &&
@@ -152,8 +152,9 @@ export function validateCatalog(root = DEFAULT_ROOT) {
           report.reviewedAt === approval.reviewedAt,
           'Evidence does not match approved lesson/reviewer: ' + evidencePath);
         requireThat(Array.isArray(report.checks), 'Missing checks: ' + evidencePath);
+        const checkArtifactRefs = new Map();
         for (const check of report.checks) {
-          allowOnlyKeys(check, ['id', 'result', 'notes', 'deviceModel',
+          allowOnlyKeys(check, ['id', 'result', 'notes', 'artifactPaths', 'deviceModel',
             'osVersion', 'testedAt', 'testMethod', 'browserName'], evidencePath + ' check');
           requireThat(isObject(check) && nonempty(check.id) &&
             check.result === 'passed' && nonempty(check.notes),
@@ -161,6 +162,11 @@ export function validateCatalog(root = DEFAULT_ROOT) {
           requireThat(!checks.has(check.id),
             'Duplicate QA check: ' + evidencePath + '/' + check.id);
           checks.add(check.id);
+          requireThat(Array.isArray(check.artifactPaths) && check.artifactPaths.length > 0 &&
+            check.artifactPaths.every(ref => typeof ref === 'string' && ref.startsWith(prefix)) &&
+            new Set(check.artifactPaths).size === check.artifactPaths.length,
+            'Missing or duplicate check-linked QA artifacts: ' + evidencePath + '/' + check.id);
+          checkArtifactRefs.set(check.id, check.artifactPaths);
           if (gate === 'technical' && ['iphone', 'ipad'].includes(check.id)) {
             requireThat(nonempty(check.deviceModel) && nonempty(check.osVersion) &&
               timestamp(check.testedAt), 'Physical device test metadata required: ' + check.id);
@@ -194,6 +200,21 @@ export function validateCatalog(root = DEFAULT_ROOT) {
           publicFiles.add(artifact.path);
           const bytes = readFile(root, artifact.path, prefix);
           requireThat(sha256(bytes) === artifact.sha256, 'Evidence artifact hash mismatch: ' + artifact.path);
+        }
+        const linked = new Set();
+        for (const [checkId, references] of checkArtifactRefs) {
+          for (const ref of references) {
+            requireThat(reportArtifacts.has(ref),
+              'QA check references unverified artifact: ' + evidencePath + '/' + checkId);
+            linked.add(ref);
+          }
+        }
+        requireThat(linked.size === reportArtifacts.size,
+          'Unlinked QA evidence artifact: ' + evidencePath);
+        if (gate === 'technical' && checkArtifactRefs.has('iphone') && checkArtifactRefs.has('ipad')) {
+          const phone = new Set(checkArtifactRefs.get('iphone'));
+          requireThat(checkArtifactRefs.get('ipad').every(ref => !phone.has(ref)),
+            'iPhone and iPad must have distinct physical test artifacts: ' + evidencePath);
         }
       }
       for (const check of required) {

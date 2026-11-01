@@ -95,23 +95,27 @@ test('synthetic reviewed-package fixture signs to a detached private record, ref
   const qa = {};
   for (const [gate, checks] of Object.entries(REQUIRED_CHECKS)) {
     const dir = 'evidence/demo/' + gate + '/';
-    const artifact = dir + 'synthetic.txt';
-    const artifactData = 'SYNTHETIC TEST ONLY — NOT ACTUAL QA';
-    write(artifact, artifactData);
+    const artifacts = checks.map(id => {
+      const artifact = dir + id + '-synthetic.txt';
+      const artifactData = 'SYNTHETIC TEST ONLY — NOT ACTUAL QA: ' + id;
+      write(artifact, artifactData);
+      return { path: artifact, sha256: hash(artifactData) };
+    });
     const reportPath = dir + 'report.json';
     write(reportPath, JSON.stringify({
-      lessonId: 'demo', version: '1', gate,
+      schemaVersion: '1.1.0', lessonId: 'demo', version: '1', gate,
       entrySha256: htmlHash, packageSha256: packageHash,
       reviewedBy: 'Synthetic fixture only', reviewedAt,
       checks: checks.map(id => ({
         id, result: 'passed', notes: 'Synthetic fixture only',
+        artifactPaths: [dir + id + '-synthetic.txt'],
         ...(['iphone', 'ipad'].includes(id) ? {
           deviceModel: id === 'iphone' ? 'Test iPhone 16' : 'Test iPad Air',
           osVersion: id === 'iphone' ? 'iOS 18.0' : 'iPadOS 18.0',
           browserName: 'Safari', testMethod: 'physical_device', testedAt: reviewedAt
         } : {})
       })),
-      artifacts: [{ path: artifact, sha256: hash(artifactData) }]
+      artifacts
     }));
     qa[gate] = { status: 'passed', reviewedBy: 'Synthetic fixture only',
       reviewedAt, evidence: [reportPath] };
