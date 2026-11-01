@@ -20,6 +20,39 @@ const LESSON_EXTENSIONS = new Set([
 const EVIDENCE_EXTENSIONS = new Set([
   '.json', '.txt', '.md', '.csv', '.png', '.jpg', '.jpeg', '.webp', '.avif'
 ]);
+// A filename allowlist alone does not establish media type. Reject obvious
+// HTML/script masquerading as an image, video, audio file or web font before
+// such bytes can enter the public approved catalog. This checks container
+// signatures, NOT full decoding, file safety or content licensing.
+const MEDIA_SIGNATURES = new Set([
+  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif',
+  '.mp4', '.webm', '.mp3', '.ogg', '.wav', '.woff', '.woff2'
+]);
+function matchesMediaSignature(extension, bytes) {
+  const ascii = (start, end) => bytes.toString('ascii', start, end);
+  const begins = hex => bytes.length >= hex.length / 2 &&
+    bytes.subarray(0, hex.length / 2).equals(Buffer.from(hex, 'hex'));
+  const riff = kind => bytes.length >= 12 && ascii(0, 4) === 'RIFF' &&
+    ascii(8, 12) === kind;
+  switch (extension) {
+    case '.png': return begins('89504e470d0a1a0a');
+    case '.jpg':
+    case '.jpeg': return begins('ffd8ff');
+    case '.gif': return ascii(0, 6) === 'GIF87a' || ascii(0, 6) === 'GIF89a';
+    case '.webp': return riff('WEBP');
+    case '.avif': return bytes.length >= 16 && ascii(4, 8) === 'ftyp' &&
+      /(?:avif|avis)/.test(ascii(8, Math.min(bytes.length, 64)));
+    case '.mp4': return bytes.length >= 12 && ascii(4, 8) === 'ftyp';
+    case '.webm': return begins('1a45dfa3');
+    case '.mp3': return ascii(0, 3) === 'ID3' ||
+      (bytes.length >= 2 && bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0);
+    case '.ogg': return ascii(0, 4) === 'OggS';
+    case '.wav': return riff('WAVE');
+    case '.woff': return ascii(0, 4) === 'wOFF';
+    case '.woff2': return ascii(0, 4) === 'wOF2';
+    default: return true;
+  }
+}
 const PRIVATE_JSON_FIELDS = /"(?:teacher(?:[_-]?(?:only|answer(?:[_-]?key)?|key))|answer[_-]?key|student[_-]?roster|private[_-]?notes|credentials?|secrets?)"\s*:/i;
 const TEXT_FILE = /\.(?:html?|js|mjs|css|json|txt|md|csv|vtt|srt|svg|xml)$/i;
 const SECRET_PATTERNS = [
@@ -85,6 +118,16 @@ export function auditPublicPackage(root, paths) {
     if (!resolved.startsWith(base + path.sep) ||
         !fs.lstatSync(absolute).isFile() || fs.lstatSync(absolute).isSymbolicLink()) {
       throw new Error('Unsafe public package file: ' + relative);
+    }
+    if (MEDIA_SIGNATURES.has(extension)) {
+      const fd = fs.openSync(absolute, 'r');
+      const header = Buffer.alloc(64);
+      let count;
+      try { count = fs.readSync(fd, header, 0, header.length, 0); }
+      finally { fs.closeSync(fd); }
+      if (!matchesMediaSignature(extension, header.subarray(0, count))) {
+        throw new Error('Invalid public media signature: ' + relative);
+      }
     }
     if (!TEXT_FILE.test(relative)) continue;
     const data = fs.readFileSync(absolute, 'utf8');
