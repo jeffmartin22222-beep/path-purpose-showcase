@@ -28,6 +28,11 @@ export function fingerprintReviewedBundle(source) {
       const absolute = path.join(directory, item.name);
       const stat = fs.lstatSync(absolute);
       if (stat.isSymbolicLink()) throw new Error('Symlink in private handoff: ' + relative);
+      // A hardlink can expose a file outside the reviewed package without a symlink.
+      // Reject it before hashing or staging any bytes into a public repository.
+      if (stat.isFile() && stat.nlink !== 1) {
+        throw new Error('Hardlinked file in private handoff: ' + relative);
+      }
       if (stat.isDirectory()) {
         walk(absolute, relative + '/');
       } else if (stat.isFile()) {
