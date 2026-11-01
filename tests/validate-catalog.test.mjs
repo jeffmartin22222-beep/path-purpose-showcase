@@ -124,3 +124,29 @@ test('rejects unlisted evidence files that could leak private review materials',
   f.write('evidence/demo/technical/private-notes.txt', 'Do not publish');
   assert.throws(() => validateCatalog(f.root), /Unreferenced evidence file/);
 }));
+
+function repinFixtureHtml(f) {
+  const bytes = fs.readFileSync(path.join(f.root, f.lesson.entry));
+  f.lesson.sha256 = hash(bytes);
+  f.lesson.packageSha256 = hash(JSON.stringify([
+    { path: f.lesson.entry, sha256: f.lesson.sha256 }
+  ]));
+  for (const gate of Object.keys(REQUIRED_CHECKS)) {
+    const reportPath = 'evidence/demo/' + gate + '/report.json';
+    const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
+    report.entrySha256 = f.lesson.sha256;
+    report.packageSha256 = f.lesson.packageSha256;
+    f.write(reportPath, JSON.stringify(report));
+  }
+  f.save();
+}
+test('catalog rejects remote HTML links even if all hashes and reports are updated', () => withFixture(f => {
+  f.write(f.lesson.entry, '<!doctype html><a href="https://example.com/">External link</a>');
+  repinFixtureHtml(f);
+  assert.throws(() => validateCatalog(f.root), /External dependency or link/);
+}));
+test('catalog rejects teacher-only text even if all hashes and reports are updated', () => withFixture(f => {
+  f.write(f.lesson.entry, '<!doctype html><p>Teacher-only answer key</p>');
+  repinFixtureHtml(f);
+  assert.throws(() => validateCatalog(f.root), /Potential secret or teacher-only/);
+}));
