@@ -95,6 +95,21 @@ const SCRIPT_NETWORK_RISKS = [
   /\b(?:window\.|document\.)?location\.(?:assign|replace)\s*\(/i
 ];
 const REMOTE_SCRIPT_LITERAL = /\bhttps?:\/\/[a-z0-9]/i;
+// Inline scripts and event handlers can defer outbound requests until a click
+// or timer, beyond the initial-load browser smoke window. Inspect their URL
+// literals just as we inspect standalone .js/.mjs files. This is conservative
+// static lint, not a JavaScript parser or a runtime network sandbox.
+function hasDeferredRemoteHtmlCode(html) {
+  const scripts = html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script\\s*>/gi);
+  for (const match of scripts) {
+    if (REMOTE_SCRIPT_LITERAL.test(match[1])) return true;
+  }
+  const handlers = html.matchAll(/\\bon[a-z]+\\s*=\\s*(?:"([^"]*)"|'([^']*)')/gi);
+  for (const match of handlers) {
+    if (REMOTE_SCRIPT_LITERAL.test(match[1] ?? match[2])) return true;
+  }
+  return false;
+}
 export function auditPublicPackage(root, paths) {
   const base = fs.realpathSync(root);
   for (const relative of paths) {
@@ -139,7 +154,8 @@ export function auditPublicPackage(root, paths) {
     }
     if (/\.html?$/i.test(relative) &&
         (EXTERNAL_MARKUP.some(pattern => pattern.test(data)) ||
-         UNSAFE_HTML_NAVIGATION.some(pattern => pattern.test(data)))) {
+         UNSAFE_HTML_NAVIGATION.some(pattern => pattern.test(data)) ||
+         hasDeferredRemoteHtmlCode(data))) {
       throw new Error('External dependency or link in student-facing HTML: ' + relative);
     }
     if (/\.css$/i.test(relative) &&
