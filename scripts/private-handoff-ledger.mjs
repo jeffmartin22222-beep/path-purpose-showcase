@@ -1,6 +1,35 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+// Never silently accept a damaged or partially overwritten replay ledger.
+// Otherwise an invalid prior record could be ignored during duplicate checks.
+function validateExistingLedger(ledger) {
+  if (!ledger || ledger.schemaVersion !== 1 || !Array.isArray(ledger.records) ||
+      ledger.records.length > 100000) throw new Error('Invalid private replay ledger schema');
+  const sourceIds = new Set();
+  const versions = new Set();
+  for (const record of ledger.records) {
+    const staged = record?.status === 'staged';
+    const pending = record?.status === 'pending';
+    const keys = staged
+      ? ['bundleSha256', 'lessonId', 'lessonVersion', 'prUrl', 'sourceArtifactId', 'status', 'updatedAt']
+      : ['bundleSha256', 'lessonId', 'lessonVersion', 'sourceArtifactId', 'status', 'updatedAt'];
+    if ((!staged && !pending) || !record || Array.isArray(record) ||
+        JSON.stringify(Object.keys(record).sort()) !== JSON.stringify(keys) ||
+        ['sourceArtifactId', 'lessonId', 'lessonVersion', 'updatedAt'].some(k =>
+          typeof record[k] !== 'string' || !record[k].trim()) ||
+        !/^[a-f0-9]{64}$/.test(record.bundleSha256) ||
+        (staged && !/^https:\\/\\/github\\.com\\/jeffmartin22222-beep\\/path-purpose-showcase\\/pull\\/[1-9][0-9]*$/.test(record.prUrl))) {
+      throw new Error('Invalid private replay ledger record');
+    }
+    const versionKey = JSON.stringify([record.lessonId, record.lessonVersion]);
+    if (sourceIds.has(record.sourceArtifactId) || versions.has(versionKey))
+      throw new Error('Duplicate entries in private replay ledger');
+    sourceIds.add(record.sourceArtifactId);
+    versions.add(versionKey);
+  }
+}
+
 /**
  * Private-runner-only replay ledger. The file and its parent directory must
  * live on a durable, shared, access-controlled filesystem OUTSIDE this repo.
@@ -39,10 +68,11 @@ export function withPrivateHandoffLedger(ledgerPath, handoff, work) {
     fs.fsyncSync(lock);
     let ledger = { schemaVersion: 1, records: [] };
     if (fs.existsSync(ledgerPath)) {
+      const stat = fs.statSync(ledgerPath);
+      if (stat.size > 16 * 1024 * 1024) throw new Error('Private replay ledger exceeds size limit');
       ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
-      if (ledger.schemaVersion !== 1 || !Array.isArray(ledger.records))
-        throw new Error('Invalid private replay ledger schema');
     }
+    validateExistingLedger(ledger);
     if (ledger.records.some(r =>
       r.sourceArtifactId === handoff.sourceArtifactId ||
       (r.lessonId === handoff.lessonId && r.lessonVersion === handoff.lessonVersion)))
@@ -58,13 +88,19 @@ export function withPrivateHandoffLedger(ledgerPath, handoff, work) {
         fs.closeSync(fd);
       }
       fs.renameSync(temporary, ledgerPath);
+      // Durable rename requires syncing the parent directory as well as the file.
+      // If this filesystem cannot provide that guarantee, fail closed.
+      const directoryFd = fs.openSync(directory, 'r');
+      try { fs.fsyncSync(directoryFd); }
+      finally { fs.closeSync(directoryFd); }
     };
     const entry = { ...Object.fromEntries(fields.map(k => [k, handoff[k]])),
       status: 'pending', updatedAt: new Date().toISOString() };
     ledger.records.push(entry);
     persist(); // Reserve BEFORE any push or PR; failure remains pending.
     const result = work();
-    if (typeof result !== 'string' || !/^https:\/\/github\.com\//.test(result))
+    if (typeof result !== 'string' ||
+        !/^https:\/\/github\.com\/jeffmartin22222-beep\/path-purpose-showcase\/pull\/[1-9][0-9]*$/.test(result))
       throw new Error('Staging did not return a GitHub review PR URL');
     entry.status = 'staged';
     entry.prUrl = result;
