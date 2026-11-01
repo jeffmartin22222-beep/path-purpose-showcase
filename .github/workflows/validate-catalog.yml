@@ -4,6 +4,9 @@ on:
     branches: [main, feature/qa-gated-publishing]
   pull_request:
   workflow_dispatch:
+concurrency:
+  group: curriculum-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
