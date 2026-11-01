@@ -112,7 +112,7 @@ test('rejects executable, archive and unreviewed binary file types', () => fixtu
 }));
 
 test('rejects credential strings in otherwise allowed evidence CSV', () => fixture(({root,write}) => {
-  write('evidence/demo/content/results.csv', 'type,value\\npassword,VerySensitiveSecret123456');
+  write('evidence/demo/content/results.csv', 'type,value\npassword,VerySensitiveSecret123456');
   assert.throws(() => auditPublicPackage(root, ['evidence/demo/content/results.csv']),
     /Potential secret or teacher-only material/);
 }));
