@@ -20,7 +20,7 @@
 
 ## Runnable reviewed-package draft PR staging (requires private runner)
 
-The repository now includes `scripts/stage-reviewed-package.mjs`. On a **private, clean, trusted checkout** of `feature/qa-gated-publishing`, the runner can execute a read-only dry run with `node scripts/stage-reviewed-package.mjs /private/reviewed-bundle`. After independent reviews, rights clearance, redaction and owner-approved public staging, the authorized operator must obtain the **expected SHA-256 bundle fingerprint from an independent, immutable producer record** (not from the extracted directory itself). Run the dry-run command to inspect the computed fingerprint and compare it with the trusted record. Only then run `node scripts/stage-reviewed-package.mjs /private/reviewed-bundle --apply --acknowledge-public-reviewed --expected-bundle-sha256=<64-character-trusted-digest>` with `GH_TOKEN` supplied through the private runner secret store and git push credentials configured securely. The digest covers all allowed files' paths and bytes, rejects unexpected files/symlinks, and is mandatory for `--apply`. A digest self-reported by the same untrusted source **does not establish provenance or authenticity**. The script validates the package, refuses dirty trees or unexpected remotes, creates a unique feature branch, reuses the validated importer, runs unit tests, pushes only the reviewed files, and opens a **draft PR against the integration branch**, not main. It never merges or deploys. The operator must verify the PR, actual test evidence, and content rights before further action. The draft PR itself is PUBLIC; never invoke `--apply` on private or unreviewed content.
+The repository now includes `scripts/stage-reviewed-package.mjs`. On a **private, clean, trusted checkout** of `feature/qa-gated-publishing`, the runner can execute a read-only dry run with `node scripts/stage-reviewed-package.mjs /private/reviewed-bundle`. After independent reviews, rights clearance, redaction and owner-approved public staging, the authorized operator must obtain the **expected SHA-256 bundle fingerprint from an independent, immutable producer record** (not from the extracted directory itself). Run the dry-run command to inspect the computed fingerprint and compare it with the trusted record. Only then run `node scripts/stage-reviewed-package.mjs /private/reviewed-bundle --apply --acknowledge-public-reviewed --expected-bundle-sha256=<64-character-trusted-digest> --signed-handoff-record=/private/trusted-record.json --trusted-producer-public-key=/private/keys/producer-public.pem` with `GH_TOKEN` supplied through the private runner secret store and git push credentials configured securely. The record and trusted public key must be outside both the bundle and the public Showcase checkout. The digest covers all allowed files' paths and bytes, rejects unexpected files/symlinks, and is mandatory for `--apply`. A digest self-reported by the same untrusted source **does not establish provenance or authenticity**. The script validates the package, refuses dirty trees or unexpected remotes, creates a unique feature branch, reuses the validated importer, runs unit tests, pushes only the reviewed files, and opens a **draft PR against the integration branch**, not main. It never merges or deploys. The operator must verify the PR, actual test evidence, and content rights before further action. The draft PR itself is PUBLIC; never invoke `--apply` on private or unreviewed content.
 
 This script does **not** discover or fetch producer artifacts, provision credentials, guarantee evidence authenticity, or schedule transfers. The private producer storage, authenticated runner, source-to-runner delivery and owner approval are still required. The script intentionally fails closed if credentials or acknowledgements are absent.
 
@@ -50,3 +50,28 @@ Prefer a **private production repository or restricted object storage** as the p
 ## Source fingerprint transport contract (implemented locally; external source not connected)
 
 The private producer must publish a separate immutable record containing a unique source artifact ID, immutable version, the digest produced by `fingerprintReviewedBundle`, expected lesson ID, creation time, and an authorized reviewer reference. Deliver that record over a separately authenticated trusted channel; never trust a digest embedded in the same unverified ZIP or directory. The staging tool rejects missing/mismatched pinned digests, unexpected files, and symlinks before any GitHub push. The fingerprint is a transport-integrity check, **not** a replacement for human review, signature verification, rights clearance or actual iOS testing. The authorized runner must keep a private replay ledger keyed by source ID + version + digest and must not run concurrent staging jobs for the same package. No source registry, credential service or runner is provisioned yet.
+
+## Independent signed producer provenance (verification implemented; signer not provisioned)
+
+A private producer must sign a detached handoff record with an Ed25519 private key kept outside GitHub, lesson bundles and public artifacts. The authorized runner must receive its trusted PEM public key through a separate, owner-approved channel; never trust a key supplied by the same untrusted package.
+
+The signed record is JSON with exactly `payload` and `signature` fields. `signature` is standard base64 of a raw 64-byte Ed25519 signature over UTF-8 bytes from `canonicalHandoffPayload(payload)` in `scripts/verify-signed-handoff.mjs`. The payload must have exactly these string fields: `bundleSha256`, `expiresAt`, `issuedAt`, `lessonId`, `lessonVersion`, `repository`, `schemaVersion`, `sourceArtifactId`. The verifier sorts the keys lexically before serializing, so producers should call the exported canonicalization helper.
+
+Example payload format (illustrative only; NOT an approval or a valid signature):
+
+```json
+{
+  "schemaVersion": "1",
+  "repository": "jeffmartin22222-beep/path-purpose-showcase",
+  "lessonId": "inside-the-cell",
+  "lessonVersion": "1.0.0",
+  "bundleSha256": "<64 lowercase hex characters>",
+  "sourceArtifactId": "private:immutable-object-v1",
+  "issuedAt": "2026-11-01T00:00:00Z",
+  "expiresAt": "2026-11-02T00:00:00Z"
+}
+```
+
+The signed record must be transported independently from the reviewed bundle. The signed SHA-256, lesson identity and version must match the independently verified bundle. The verifier rejects missing, malformed, expired, future-dated or longer-than-seven-day records and untrusted signatures **before git operations**. This authenticates producer provenance only; it does not prove human review, standards alignment, copyright rights, physical iOS testing or release authorization.
+
+**Still missing externally:** private immutable artifact storage, signer/key management, source event delivery, a trusted runner with short-lived GitHub credentials, a private replay ledger keyed by artifact/version/digest, independent reviewers, protected branches and explicit owner-authorized release. A deterministic review branch is not a complete distributed replay ledger. No automatic connection or deployment is claimed.
