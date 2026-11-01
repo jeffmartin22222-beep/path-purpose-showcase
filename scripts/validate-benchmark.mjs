@@ -12,9 +12,30 @@ const HARD_GATES = ['soloAsynchronous', 'noPeerDependency', 'deviceInternetOnly'
   'printEquivalents', 'studentOnlyPublic'];
 const QA_GATES = ['content', 'pedagogy', 'technical', 'experience'];
 const SHA = /^[a-f0-9]{64}$/;
-const TEXT = /\.(?:html?|js|mjs|json|md|txt|css|vtt|srt)$/i;
+const TEXT = /\.(?:html?|js|mjs|json|md|txt|css|vtt|srt|svg|csv)$/i;
 const PEER_REQUIREMENT = /\b(?:work|discuss|collaborate|meet|pair|team up|check in|share)\s+(?:with\s+)?(?:a\s+|your\s+|another\s+)?(?:partner|classmate|peer|group|parent|adult)\b/i;
 const REQUIRED_MATERIAL = /\b(?:bring|buy|purchase|print|go outside|go outdoors|collect|gather)\s+(?:a\s+|an\s+|your\s+|the\s+)?(?:worksheet|paper|pencil|scissors|supplies|materials|kit|paint|glue|instrument|equipment|leaves|rocks|objects|ingredients)\b/i;
+
+// Defense-in-depth for common required-work phrasing missed by the original
+// high-signal regexes. These inspect text in reviewed lesson files, not media
+// speech or implied dependencies; independent end-to-end human review remains mandatory.
+const PEER_BLOCKERS = [
+  PEER_REQUIREMENT,
+  /\b(?:reply|respond)\s+to\s+(?:(?:at least|one|two|three|\d+)\s+)?(?:your\s+)?(?:classmates?|peers?|partners?)\b/i,
+  /\b(?:wait for|await)\s+(?:(?:your|a|an|the)\s+)?(?:teacher|classmate|peer|partner|parent|adult)(?:'s)?\s+(?:response|reply|feedback|approval|grade|grading)\b/i,
+  /\b(?:attend|join|participate in)\s+(?:(?:a|the|your)\s+)?(?:live|scheduled|synchronous)\s+(?:class|meeting|session|discussion|call)\b/i,
+  /\b(?:ask|have|invite)\s+(?:(?:your|a|an)\s+)?(?:parent|adult|family member|classmate|partner)\s+to\s+(?:help|participate|review|sign|respond|complete)\b/i,
+  /\b(?:form|join)\s+(?:(?:a|your)\s+)?(?:group|team|pair)\s+(?:to|and)\b/i
+];
+const MATERIAL_BLOCKERS = [
+  REQUIRED_MATERIAL,
+  /\b(?:must|need to|have to|required to)\s+(?:use|bring|buy|purchase|obtain|find|collect|gather)\s+(?:(?:a|an|the|your|some)\s+)?(?:printer|paper|pencil|scissors|glue|paint|worksheet|notebook|instrument|supplies|materials|equipment|ingredients|camera)\b/i,
+  /\b(?:use|bring|find|get|grab|have ready)\s+(?:(?:a|an|the|your|some)\s+)?(?:printer|paper|pencil|scissors|glue|paint|worksheet|notebook|instrument|supplies|materials|equipment|ingredients)\s+(?:to|for|before)\b/i,
+  /\b(?:must|need to|have to|required to)\s+(?:print|go outside|go outdoors|travel|visit\s+(?:the|a)\s+(?:park|store|library))\b/i,
+  /\b(?:print out|print off|download and print)\b/i,
+  /\b(?:go|head|travel|walk)\s+(?:outside|outdoors|to\s+(?:the\s+)?(?:park|library|store|yard))\s+(?:to|and|for)\b/i,
+  /\b(?:required|mandatory)\s+(?:supplies|materials|equipment|printing|purchase)\s*:/i
+];
 function check(ok, message) { if (!ok) throw new Error(message); }
 function object(x) { return x !== null && typeof x === 'object' && !Array.isArray(x); }
 function keys(x, allowed, label) {
@@ -154,8 +175,10 @@ export function validateBenchmark(root, lesson) {
   // assessment and guides for implied peer/material requirements.
   for (const relative of [lesson.entry, ...lesson.assets.map(a => a.path)].filter(x => TEXT.test(x))) {
     const content = safeFile(root, relative, 'lessons/' + lesson.id + '/').toString('utf8');
-    check(!PEER_REQUIREMENT.test(content), 'Potential required peer dependency: ' + relative);
-    check(!REQUIRED_MATERIAL.test(content), 'Potential required physical material: ' + relative);
+    check(!PEER_BLOCKERS.some(pattern => pattern.test(content)),
+      'Potential required peer dependency: ' + relative);
+    check(!MATERIAL_BLOCKERS.some(pattern => pattern.test(content)),
+      'Potential required physical material: ' + relative);
   }
   return { path: pointer.path, total };
 }
