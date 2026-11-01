@@ -85,3 +85,28 @@ test('rejects active URI schemes and scripted navigation in approved HTML', () =
     assert.throws(() => auditPublicPackage(root, ['lessons/demo/index.html']), /External dependency/);
   }
 }));
+
+// These tests are synthetic; no fixture is approved or copied into the live catalog.
+test('allows approved student media and passive evidence formats', () => fixture(({root,write}) => {
+  write('lessons/demo/clip.mp4', 'synthetic video bytes');
+  write('lessons/demo/font.woff2', 'synthetic font bytes');
+  write('lessons/demo/captions.vtt', 'WEBVTT\\n\\n00:00:00.000 --> 00:00:01.000\\nCell');
+  write('evidence/demo/technical/screenshot.png', 'synthetic screenshot bytes');
+  assert.equal(auditPublicPackage(root, [
+    'lessons/demo/clip.mp4', 'lessons/demo/font.woff2',
+    'lessons/demo/captions.vtt', 'evidence/demo/technical/screenshot.png'
+  ]).auditedFiles, 4);
+}));
+test('rejects executable, archive and unreviewed binary file types', () => fixture(({root,write}) => {
+  for (const relative of [
+    'lessons/demo/answers.zip', 'lessons/demo/setup.exe',
+    'lessons/demo/bundle.wasm', 'lessons/demo/raw.pdf',
+    'lessons/demo/data.bin', 'evidence/demo/technical/recording.mp4',
+    'evidence/demo/content/raw.html', 'evidence/demo/content/review.js',
+    'evidence/demo/content/raw.svg'
+  ]) {
+    write(relative, 'synthetic content only');
+    assert.throws(() => auditPublicPackage(root, [relative]),
+      /Unsupported public package file type/, relative);
+  }
+}));
