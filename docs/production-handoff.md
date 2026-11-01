@@ -115,3 +115,28 @@ This command requires exactly one schema-valid, four-gate reviewed lesson; finge
 Provision an Ed25519 key using an approved private key-management process, preferably a managed signer/HSM. Keep the private key outside GitHub, bundles, logs, and public CI; distribute the corresponding trusted public key through a separately authenticated channel. The signed JSON record must travel **independently** of the immutable source bundle to the authorized private runner. The runner then verifies the source fingerprint against the signed record, checks replay history and opens only a draft review PR using `scripts/stage-reviewed-package.mjs`. Do not put the detached record in the public lesson/evidence folders.
 
 **Not yet implemented/proven:** producer object storage, immutable artifact identifier issuance, trusted signer service/key custody, authenticated delivery of record and bundle, runner credentials, real shared replay ledger and an end-to-end signed draft-PR acceptance run. Synthetic signer tests verify cryptography and rejection behavior, not these external integrations. Physical iOS, SME, licensing and owner release approval remain mandatory.
+
+## Offline signed-provenance preflight (implemented 2026-11-01)
+
+A trusted operator can now verify the actual Ed25519 producer signature and immutable
+bundle digest **without** supplying `GH_TOKEN`, creating a Git branch, writing the
+private replay ledger, copying lesson files, or opening a public PR:
+
+```sh
+node scripts/stage-reviewed-package.mjs /private/reviewed-bundle \
+  --expected-bundle-sha256=<digest-from-independent-trusted-source> \
+  --signed-handoff-record=/private/detached-record.json \
+  --trusted-producer-public-key=/private/trusted-producer.pem
+```
+
+All three provenance options are required together for a signed dry run.
+A plain dry run remains a structural-only check and explicitly reports that
+producer provenance was **not** verified. Invalid signatures, mismatched digests,
+and missing trusted-key options fail before any GitHub action. Synthetic regression
+coverage exercises signer → bundle fingerprint → staging preflight, including
+wrong-key and digest-mismatch rejection. These tests **do not** establish a live
+private transfer, independent human review, media rights, physical iOS testing,
+or a successful draft-PR creation. Do not move the source bundle, key, or detached
+record into the public repository. Production still requires the independently
+provisioned runner, durable replay ledger, private source transport and human
+release process.
