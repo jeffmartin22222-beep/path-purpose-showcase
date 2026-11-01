@@ -200,3 +200,22 @@ test('accepts recognized media container signatures without claiming decoding', 
     assert.equal(auditPublicPackage(root, [relative]).auditedFiles, 1, relative);
   }
 }));
+
+test('rejects deferred external URL literals in inline scripts and event handlers', () => fixture(({root,write}) => {
+  for (const html of [
+    '<script>const endpoint = "https://outside.example/collect"; button.onclick = () => fetch(endpoint);</script>',
+    '<script type="module">import("https://outside.example/widget.js")</script>',
+    '<button onclick="fetch(\'https://outside.example/collect\')">Send</button>',
+    '<button onmouseover=\'const destination = "https://outside.example/"\'>Hover</button>'
+  ]) {
+    write('lessons/demo/index.html', html);
+    assert.throws(() => auditPublicPackage(root, ['lessons/demo/index.html']),
+      /External dependency/, html);
+  }
+}));
+test('allows deferred local lesson script and local interactive handler', () => fixture(({root,write}) => {
+  write('lessons/demo/index.html',
+    '<script>const data = "./lesson.json"; button.onclick = () => fetch(data);</script>' +
+    '<button onclick="localStorage.setItem(\'progress\', \'1\')">Save</button>');
+  assert.equal(auditPublicPackage(root, ['lessons/demo/index.html']).auditedFiles, 1);
+}));
