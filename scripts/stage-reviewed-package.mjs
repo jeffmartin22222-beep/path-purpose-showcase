@@ -116,6 +116,13 @@ function main() {
     'Run only from the reviewed integration branch ' + base);
   requireThat(!command('git', ['status', '--porcelain']),
     'Working tree must be clean before staging a public draft PR');
+  // A stale integration checkout may run an obsolete approval validator.
+  // Refresh the exact remote base without merging or changing the worktree;
+  // require the trusted runner to use the latest reviewed gate implementation.
+  const localHead = command('git', ['rev-parse', 'HEAD']);
+  command('git', ['fetch', '--no-tags', 'origin', 'refs/heads/' + base]);
+  requireThat(command('git', ['rev-parse', 'FETCH_HEAD']) === localHead,
+    'Integration checkout is stale; refresh and revalidate before staging');
   command('gh', ['--version']);
 
   // The ledger is private, shared, durable and independent of the public
