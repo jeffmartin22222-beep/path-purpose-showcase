@@ -90,11 +90,6 @@ export function auditPublicPackage(root, paths) {
         (relative.startsWith('lessons/') && INTERNAL_CONTENT.test(data))) {
       throw new Error('Potential secret or teacher-only material in public package: ' + relative);
     }
-    if (/\.(?:html?|m?js)$/i.test(relative) &&
-        (SCRIPT_NETWORK_RISKS.some(pattern => pattern.test(data)) ||
-         (/\.(?:m?js)$/i.test(relative) && REMOTE_SCRIPT_LITERAL.test(data)))) {
-      throw new Error('Unsafe outbound network or navigation code in public lesson: ' + relative);
-    }
     if (/\.html?$/i.test(relative) &&
         (EXTERNAL_MARKUP.some(pattern => pattern.test(data)) ||
          UNSAFE_HTML_NAVIGATION.some(pattern => pattern.test(data)))) {
@@ -103,6 +98,11 @@ export function auditPublicPackage(root, paths) {
     if (/\.css$/i.test(relative) &&
         EXTERNAL_MARKUP.slice(2, 4).some(pattern => pattern.test(data))) {
       throw new Error('External CSS dependency in public package: ' + relative);
+    }
+    if (/\.(?:html?|m?js)$/i.test(relative) &&
+        (SCRIPT_NETWORK_RISKS.some(pattern => pattern.test(data)) ||
+         (/\.(?:m?js)$/i.test(relative) && REMOTE_SCRIPT_LITERAL.test(data)))) {
+      throw new Error('Unsafe outbound network or navigation code in public lesson: ' + relative);
     }
     // SVG is an active document format, not merely a passive image. A malicious
     // SVG can execute scripts or load remote content when opened directly.
