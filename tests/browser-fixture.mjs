@@ -28,9 +28,10 @@ try {
   fs.mkdirSync(path.dirname(lessonPath), { recursive: true });
   fs.mkdirSync(path.dirname(catalogPath), { recursive: true });
   fs.copyFileSync(path.join(repoRoot, 'index.html'), path.join(temp, 'index.html'));
-  fs.writeFileSync(catalogPath, JSON.stringify({
+  const writeCatalog = () => fs.writeFileSync(catalogPath, JSON.stringify({
     schemaVersion: '1.0.0', generatedAt: null, lessons: [syntheticLesson]
   }));
+  writeCatalog();
   const html = '<!doctype html><html lang="en"><head><title>Fixture</title>' +
     '<meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
     '<body><h1>Synthetic fixture lesson</h1><p>Testing a nonempty approved catalog ' +
@@ -48,12 +49,18 @@ try {
   assert.match(external.stderr, /depends on external network resources/);
   console.log('PASS: external lesson network dependency is rejected.');
 
+  // Explicitly list the absent file so the manifest isolation check allows
+  // its request and the HTTP 404 check is independently exercised.
+  syntheticLesson.assets = [{ path: 'lessons/synthetic/missing.png' }];
+  writeCatalog();
   fs.writeFileSync(lessonPath, html.replace('</body>',
     '<img src="/lessons/synthetic/missing.png" alt="Missing local asset"></body>'));
   const missing = run();
   assert.notEqual(missing.status, 0, 'Missing local asset must fail browser smoke checks');
   assert.match(missing.stderr, /has missing local assets/);
   console.log('PASS: missing local lesson asset is rejected.');
+  syntheticLesson.assets = [];
+  writeCatalog();
 
   // The public root index exists, so a normal 200 response would otherwise
   // mask this unapproved dependency. The lesson may load ONLY hashed files
