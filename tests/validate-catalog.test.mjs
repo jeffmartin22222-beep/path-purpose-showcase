@@ -195,6 +195,34 @@ test('private handoff refuses unrelated private files and symlinks', () => withF
     path.join(f.root, 'lessons/demo/linked.html'));
   assert.throws(() => fingerprintReviewedBundle(f.root), /Symlink in private handoff/);
 }));
+test('private fingerprint rejects hardlinks to files outside the reviewed bundle', () => withFixture(f => {
+  const external = path.join(os.tmpdir(), 'pp-external-' + path.basename(f.root));
+  fs.writeFileSync(external, 'Synthetic private file; never publish');
+  try {
+    fs.linkSync(external, path.join(f.root, 'evidence/demo/content/linked.txt'));
+    assert.throws(() => fingerprintReviewedBundle(f.root), /Hardlinked file in private handoff/);
+  } finally {
+    fs.rmSync(external, { force: true });
+  }
+}));
+test('standalone importer rejects a hardlinked source even if its manifest hashes match', () => withFixture(f => {
+  const external = path.join(os.tmpdir(), 'pp-index-' + path.basename(f.root));
+  const entry = path.join(f.root, 'lessons/demo/index.html');
+  fs.copyFileSync(entry, external);
+  try {
+    fs.unlinkSync(entry);
+    fs.linkSync(external, entry);
+    // The source content still matches the approved hashes. Link topology is the risk.
+    assert.equal(validateCatalog(f.root).approvedLessons, 1);
+    const importer = fileURLToPath(new URL('../scripts/import-approved-package.mjs', import.meta.url));
+    const run = spawnSync(process.execPath, [importer, f.root], { encoding: 'utf8' });
+    assert.notEqual(run.status, 0);
+    assert.match(run.stderr, /Source file is not an independent regular file/);
+  } finally {
+    fs.rmSync(external, { force: true });
+  }
+}));
+
 test('staging apply refuses an unpinned bundle even with a token', () => withFixture(f => {
   const staging = fileURLToPath(new URL('../scripts/stage-reviewed-package.mjs', import.meta.url));
   const run = spawnSync(process.execPath, [staging, f.root,
