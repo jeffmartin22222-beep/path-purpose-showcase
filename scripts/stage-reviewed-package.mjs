@@ -13,6 +13,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { validateCatalog } from './validate-catalog.mjs';
 import { fingerprintReviewedBundle } from './fingerprint-reviewed-bundle.mjs';
+import { verifySignedHandoff } from './verify-signed-handoff.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const repo = 'jeffmartin22222-beep/path-purpose-showcase';
@@ -28,11 +29,16 @@ function command(binary, args) {
 }
 function main() {
   const [sourceArg, ...flags] = process.argv.slice(2);
-  requireThat(sourceArg, 'Usage: node scripts/stage-reviewed-package.mjs <private-bundle-dir> [--apply --acknowledge-public-reviewed --expected-bundle-sha256=<trusted-digest>]');
+  requireThat(sourceArg, 'Usage: node scripts/stage-reviewed-package.mjs <private-bundle-dir> [--apply --acknowledge-public-reviewed --expected-bundle-sha256=<trusted-digest> --signed-handoff-record=<independent-json> --trusted-producer-public-key=<trusted-pem>]');
   const digestFlags = flags.filter(x => x.startsWith('--expected-bundle-sha256='));
-  requireThat(digestFlags.length <= 1, 'Only one expected bundle digest may be supplied');
+  const recordFlags = flags.filter(x => x.startsWith('--signed-handoff-record='));
+  const keyFlags = flags.filter(x => x.startsWith('--trusted-producer-public-key='));
+  requireThat(digestFlags.length <= 1 && recordFlags.length <= 1 && keyFlags.length <= 1,
+    'Duplicate digest, signed record or producer key option');
   requireThat(flags.every(x => ['--apply', '--acknowledge-public-reviewed'].includes(x) ||
-    /^--expected-bundle-sha256=[a-f0-9]{64}$/.test(x)), 'Unknown or malformed option');
+    /^--expected-bundle-sha256=[a-f0-9]{64}$/.test(x) ||
+    /^--signed-handoff-record=.+$/.test(x) ||
+    /^--trusted-producer-public-key=.+$/.test(x)), 'Unknown or malformed option');
   const apply = flags.includes('--apply');
   requireThat(!apply || flags.includes('--acknowledge-public-reviewed'),
     'Apply requires explicit human reviewed/public acknowledgement');
@@ -69,6 +75,19 @@ function main() {
   // immutable producer record before passing --expected-bundle-sha256.
   requireThat(process.env.GH_TOKEN && process.env.GH_TOKEN.trim(),
     'GH_TOKEN required in private runner environment; never place it in this repository');
+  requireThat(recordFlags.length === 1 && keyFlags.length === 1,
+    'Apply requires independently signed producer record and trusted public key');
+  const recordPath = fs.realpathSync(recordFlags[0].slice('--signed-handoff-record='.length));
+  const keyPath = fs.realpathSync(keyFlags[0].slice('--trusted-producer-public-key='.length));
+  for (const privatePath of [recordPath, keyPath]) {
+    requireThat(privatePath !== realRoot && !privatePath.startsWith(realRoot + path.sep) &&
+      privatePath !== source && !privatePath.startsWith(source + path.sep),
+      'Signed handoff record and trusted key must be independent of bundle and public checkout');
+  }
+  const signed = verifySignedHandoff(recordPath, keyPath, {
+    repository: repo, lessonId: lesson.id, lessonVersion: lesson.version,
+    bundleSha256: fingerprint.sha256
+  });
   const remote = command('git', ['remote', 'get-url', 'origin']);
   requireThat([
     'https://github.com/' + repo + '.git',
@@ -112,6 +131,7 @@ function main() {
       'Owner approval and staging verification required before any release.'
     ].join('\n')]);
   console.log('Created draft review PR:', pr);
+  console.log('Verified signed source artifact:', signed.sourceArtifactId);
   console.log('No merge or deployment was performed.');
 }
 try { main(); }
