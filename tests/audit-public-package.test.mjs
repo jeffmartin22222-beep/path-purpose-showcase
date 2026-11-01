@@ -61,3 +61,27 @@ test('rejects remote and javascript SVG references', () => fixture(({root,write}
   write('lessons/demo/cell.svg', '<svg><a xlink:href="javascript:alert(1)"><circle r="10"/></a></svg>');
   assert.throws(() => auditPublicPackage(root, ['lessons/demo/cell.svg']), /Executable or external SVG/);
 }));
+
+test('rejects HTML base URL overrides, refresh redirects and embedded srcdoc', () => fixture(({root,write}) => {
+  for (const html of [
+    '<base href="https://outside.example/"><img src="cell.png">',
+    '<base href="/lessons/demo/">',
+    '<meta http-equiv="refresh" content="0;url=https://outside.example">',
+    '<iframe srcdoc="embedded active document"></iframe>'
+  ]) {
+    write('lessons/demo/index.html', html);
+    assert.throws(() => auditPublicPackage(root, ['lessons/demo/index.html']), /External dependency/);
+  }
+}));
+test('rejects active URI schemes and scripted navigation in approved HTML', () => fixture(({root,write}) => {
+  for (const html of [
+    '<a href="javascript:alert(1)">Click</a>',
+    '<img src="data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=">',
+    '<button formaction="javascript:alert(1)">Send</button>',
+    '<script>window.location = "https://outside.example";</script>',
+    '<script>location.replace("https://outside.example");</script>'
+  ]) {
+    write('lessons/demo/index.html', html);
+    assert.throws(() => auditPublicPackage(root, ['lessons/demo/index.html']), /External dependency/);
+  }
+}));
