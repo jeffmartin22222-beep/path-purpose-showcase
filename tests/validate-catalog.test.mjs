@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { validateCatalog, REQUIRED_CHECKS } from '../scripts/validate-catalog.mjs';
+import { fingerprintReviewedBundle } from '../scripts/fingerprint-reviewed-bundle.mjs';
 
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 function fixture() {
@@ -170,10 +171,45 @@ test('trusted-runner refuses apply without human acknowledgement', () => withFix
 }));
 test('trusted-runner refuses upload without private credentials', () => withFixture(f => {
   const staging = fileURLToPath(new URL('../scripts/stage-reviewed-package.mjs', import.meta.url));
+  const digest = fingerprintReviewedBundle(f.root).sha256;
   const run = spawnSync(process.execPath, [staging, f.root,
-    '--apply', '--acknowledge-public-reviewed'], {
+    '--apply', '--acknowledge-public-reviewed', '--expected-bundle-sha256=' + digest], {
     encoding: 'utf8', env: { ...process.env, GH_TOKEN: '' }
   });
   assert.notEqual(run.status, 0);
   assert.match(run.stderr, /GH_TOKEN required/);
+}));
+
+test('private handoff fingerprint is deterministic and changes when reviewed bytes change', () => withFixture(f => {
+  const first = fingerprintReviewedBundle(f.root);
+  assert.match(first.sha256, /^[a-f0-9]{64}$/);
+  assert.equal(fingerprintReviewedBundle(f.root).sha256, first.sha256);
+  f.write('lessons/demo/index.html', '<p>Changed bytes</p>');
+  assert.notEqual(fingerprintReviewedBundle(f.root).sha256, first.sha256);
+}));
+test('private handoff refuses unrelated private files and symlinks', () => withFixture(f => {
+  f.write('private/teacher-answers.json', '{"secret":true}');
+  assert.throws(() => fingerprintReviewedBundle(f.root), /Unexpected file/);
+  fs.rmSync(path.join(f.root, 'private'), { recursive: true, force: true });
+  fs.symlinkSync(path.join(f.root, 'lessons/demo/index.html'),
+    path.join(f.root, 'lessons/demo/linked.html'));
+  assert.throws(() => fingerprintReviewedBundle(f.root), /Symlink in private handoff/);
+}));
+test('staging apply refuses an unpinned bundle even with a token', () => withFixture(f => {
+  const staging = fileURLToPath(new URL('../scripts/stage-reviewed-package.mjs', import.meta.url));
+  const run = spawnSync(process.execPath, [staging, f.root,
+    '--apply', '--acknowledge-public-reviewed'], {
+    encoding: 'utf8', env: { ...process.env, GH_TOKEN: 'test-only-not-a-token' }
+  });
+  assert.notEqual(run.status, 0);
+  assert.match(run.stderr, /trusted independently obtained --expected-bundle-sha256/);
+}));
+test('staging rejects mismatched independent source fingerprint before GitHub', () => withFixture(f => {
+  const staging = fileURLToPath(new URL('../scripts/stage-reviewed-package.mjs', import.meta.url));
+  const run = spawnSync(process.execPath, [staging, f.root,
+    '--apply', '--acknowledge-public-reviewed', '--expected-bundle-sha256=' + '0'.repeat(64)], {
+    encoding: 'utf8', env: { ...process.env, GH_TOKEN: 'test-only-not-a-token' }
+  });
+  assert.notEqual(run.status, 0);
+  assert.match(run.stderr, /Private handoff fingerprint mismatch/);
 }));
