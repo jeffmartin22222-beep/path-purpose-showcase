@@ -15,8 +15,9 @@ const SECRET_PATTERNS = [
   /\bgithub_pat_[A-Za-z0-9_]{20,}\b/,
   /\bsk-(?:proj-)?[A-Za-z0-9_-]{32,}\b/,
   /\b(?:api[_ -]?key|client[_ -]?secret|access[_ -]?token|password)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{12,}/i,
-  /\b(?:teacher[- ]only|answer[- ]key|student[- ]roster)\b/i
+  /\b(?:api[_ -]?key|client[_ -]?secret)\s*[:=]\s*["']?[A-Za-z0-9_./+=-]{12,}/i
 ];
+const INTERNAL_CONTENT = /\b(?:teacher[- ]only|answer[- ]key|student[- ]roster)\b/i;
 const EXTERNAL_MARKUP = [
   /<(?:script|img|audio|video|source|track|iframe|embed|object|link|a|form)\b[^>]*?\b(?:src|href|action|poster|data)\s*=\s*["']?\s*(?:https?:)?\/\//i,
   /\bsrcset\s*=\s*["'][^"']*(?:https?:)?\/\//i,
@@ -44,7 +45,8 @@ export function auditPublicPackage(root, paths) {
     }
     if (!TEXT_FILE.test(relative)) continue;
     const data = fs.readFileSync(absolute, 'utf8');
-    if (SECRET_PATTERNS.some(pattern => pattern.test(data))) {
+    if (SECRET_PATTERNS.some(pattern => pattern.test(data)) ||
+        (relative.startsWith('lessons/') && INTERNAL_CONTENT.test(data))) {
       throw new Error('Potential secret or teacher-only material in public package: ' + relative);
     }
     if (/\.html?$/i.test(relative) &&
