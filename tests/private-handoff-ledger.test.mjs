@@ -97,3 +97,9 @@ test('invalid staged PR URL in existing ledger fails closed', () => fixture(ledg
   assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => pr),
     /Invalid private replay ledger record/);
 }));
+
+test('dangling ledger symlink fails closed instead of resetting replay history', () => fixture(ledger => {
+  fs.symlinkSync(path.join(path.dirname(ledger), 'missing-target'), ledger);
+  assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => pr), /non-symlink/);
+  assert.equal(fs.lstatSync(ledger).isSymbolicLink(), true);
+}));
