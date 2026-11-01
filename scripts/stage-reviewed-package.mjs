@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { validateCatalog } from './validate-catalog.mjs';
 import { fingerprintReviewedBundle } from './fingerprint-reviewed-bundle.mjs';
 import { verifySignedHandoff } from './verify-signed-handoff.mjs';
+import { withPrivateHandoffLedger } from './private-handoff-ledger.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const repo = 'jeffmartin22222-beep/path-purpose-showcase';
@@ -101,35 +102,51 @@ function main() {
     'Working tree must be clean before staging a public draft PR');
   command('gh', ['--version']);
 
-  // Branch creation is intentionally non-idempotent: repeated packages cannot
-  // silently overwrite an earlier review. No force push, merge or deployment.
-  command('git', ['switch', '-c', reviewBranch]);
-  command(process.execPath, ['scripts/import-approved-package.mjs', source,
-    '--apply', '--acknowledge-public-reviewed']);
-  requireThat(fingerprintReviewedBundle(source).sha256 === fingerprint.sha256,
-    'Private handoff changed during staging; refusing to push');
-  command(process.execPath, ['scripts/validate-catalog.mjs']);
-  const unitTests = fs.readdirSync(path.join(root, 'tests'))
-    .filter(x => x.endsWith('.test.mjs')).sort().map(x => 'tests/' + x);
-  command(process.execPath, ['--test', ...unitTests]);
+  // The ledger is private, shared, durable and independent of the public
+  // repository and source package. An interrupted push stays pending and
+  // requires human GitHub reconciliation; never silently replay a handoff.
+  const ledgerPath = process.env.PP_PRIVATE_HANDOFF_LEDGER;
+  requireThat(ledgerPath && path.isAbsolute(ledgerPath),
+    'PP_PRIVATE_HANDOFF_LEDGER must point to an absolute private replay ledger');
+  const ledgerAbsolute = path.resolve(ledgerPath);
+  requireThat(ledgerAbsolute !== realRoot && !ledgerAbsolute.startsWith(realRoot + path.sep) &&
+    ledgerAbsolute !== source && !ledgerAbsolute.startsWith(source + path.sep),
+    'Private replay ledger must be outside public checkout and source bundle');
+  const pr = withPrivateHandoffLedger(ledgerAbsolute, {
+    sourceArtifactId: signed.sourceArtifactId, lessonId: lesson.id,
+    lessonVersion: lesson.version, bundleSha256: fingerprint.sha256
+  }, () => {
+    // Branch creation is intentionally non-idempotent: repeated packages cannot
+    // silently overwrite an earlier review. No force push, merge or deployment.
+    command('git', ['switch', '-c', reviewBranch]);
+    command(process.execPath, ['scripts/import-approved-package.mjs', source,
+      '--apply', '--acknowledge-public-reviewed']);
+    requireThat(fingerprintReviewedBundle(source).sha256 === fingerprint.sha256,
+      'Private handoff changed during staging; refusing to push');
+    command(process.execPath, ['scripts/validate-catalog.mjs']);
+    const unitTests = fs.readdirSync(path.join(root, 'tests'))
+      .filter(x => x.endsWith('.test.mjs')).sort().map(x => 'tests/' + x);
+    command(process.execPath, ['--test', ...unitTests]);
 
-  command('git', ['add', '--', 'catalog/approved.json',
-    'lessons/' + lesson.id, 'evidence/' + lesson.id]);
-  command('git', ['commit', '-m',
-    'Stage reviewed lesson ' + lesson.id + ' (' + lesson.version + ') for independent QA']);
-  command('git', ['push', '--set-upstream', 'origin', reviewBranch]);
-  const pr = command('gh', ['pr', 'create', '--repo', repo, '--draft',
-    '--base', base, '--head', reviewBranch,
-    '--title', 'Review curriculum: ' + lesson.title,
-    '--body', [
-      'PUBLIC DRAFT PR — DO NOT MERGE WITHOUT INDEPENDENT REVIEW.',
-      '',
-      'Lesson: ' + lesson.id + ' / version ' + lesson.version,
-      'Package SHA-256: ' + lesson.packageSha256,
-      'Source reviewed and explicitly acknowledged by private runner operator.',
-      'CI hashes and static lint do not prove evidence authenticity, rights or physical iOS testing.',
-      'Owner approval and staging verification required before any release.'
-    ].join('\n')]);
+    command('git', ['add', '--', 'catalog/approved.json',
+      'lessons/' + lesson.id, 'evidence/' + lesson.id]);
+    command('git', ['commit', '-m',
+      'Stage reviewed lesson ' + lesson.id + ' (' + lesson.version + ') for independent QA']);
+    command('git', ['push', '--set-upstream', 'origin', reviewBranch]);
+    const pr = command('gh', ['pr', 'create', '--repo', repo, '--draft',
+      '--base', base, '--head', reviewBranch,
+      '--title', 'Review curriculum: ' + lesson.title,
+      '--body', [
+        'PUBLIC DRAFT PR — DO NOT MERGE WITHOUT INDEPENDENT REVIEW.',
+        '',
+        'Lesson: ' + lesson.id + ' / version ' + lesson.version,
+        'Package SHA-256: ' + lesson.packageSha256,
+        'Source reviewed and explicitly acknowledged by private runner operator.',
+        'CI hashes and static lint do not prove evidence authenticity, rights or physical iOS testing.',
+        'Owner approval and staging verification required before any release.'
+      ].join('\n')]);
+    return pr;
+  });
   console.log('Created draft review PR:', pr);
   console.log('Verified signed source artifact:', signed.sourceArtifactId);
   console.log('No merge or deployment was performed.');
