@@ -95,3 +95,23 @@ The reviewed-package importer now uses `scripts/safe-import-path.mjs` to reject 
 ### Hardlink containment (2026-11-01)
 
 The private-bundle fingerprint and standalone reviewed-package importer now reject any source regular file with a hardlink count other than one. A hardlink is not a symlink: without this check, a private bundle could reference the same inode as a file outside the reviewed package, allowing unrelated bytes to be read and copied even though the path appears to be inside the bundle. The staging flow invokes the fingerprint before validating or importing; the standalone importer enforces the same constraint independently. Synthetic negative tests cover an out-of-bundle hardlink and a manifest-valid hardlinked HTML entry. This is defense-in-depth, not proof of source authenticity or content approval. Use an isolated, trusted filesystem; hardlink-count checks cannot eliminate races from untrusted processes that can mutate the checkout during staging.
+
+
+## Private producer signing command (implemented; NOT a connected producer)
+
+After an independent curriculum/rights/device review and **only** in a trusted private producer environment, an authorized operator can issue the detached signed record required by the existing staging verifier:
+
+```sh
+node scripts/sign-private-handoff.mjs \
+  /private/immutable-reviewed-bundle \
+  /private/keys/producer-ed25519-private.pem \
+  private:immutable-object-version-id \
+  /private/records/lesson-handoff.json \
+  --acknowledge-independent-review
+```
+
+This command requires exactly one schema-valid, four-gate reviewed lesson; fingerprints every package file; signs the canonical Ed25519 payload with a private key that must be an independent regular file with restricted permissions; issues a 24-hour UTC expiration; refuses existing output files; and writes the detached record with mode 0600 and file/directory fsync. It never pushes, merges, deploys, grants approval or establishes a transport. The acknowledgement is an **operator assertion**, not cryptographic evidence that reviews actually occurred. A schema-valid but fabricated review remains unsafe and must not be signed.
+
+Provision an Ed25519 key using an approved private key-management process, preferably a managed signer/HSM. Keep the private key outside GitHub, bundles, logs, and public CI; distribute the corresponding trusted public key through a separately authenticated channel. The signed JSON record must travel **independently** of the immutable source bundle to the authorized private runner. The runner then verifies the source fingerprint against the signed record, checks replay history and opens only a draft review PR using `scripts/stage-reviewed-package.mjs`. Do not put the detached record in the public lesson/evidence folders.
+
+**Not yet implemented/proven:** producer object storage, immutable artifact identifier issuance, trusted signer service/key custody, authenticated delivery of record and bundle, runner credentials, real shared replay ledger and an end-to-end signed draft-PR acceptance run. Synthetic signer tests verify cryptography and rejection behavior, not these external integrations. Physical iOS, SME, licensing and owner release approval remain mandatory.
