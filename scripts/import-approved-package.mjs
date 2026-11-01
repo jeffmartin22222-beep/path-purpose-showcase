@@ -38,8 +38,9 @@ function importPackage() {
   const filePairs = [...paths].map(relative => {
     const from = path.resolve(source, ...relative.split('/'));
     requireThat(from.startsWith(source + path.sep), 'Source escapes private bundle');
-    requireThat(fs.lstatSync(from).isFile() && !fs.lstatSync(from).isSymbolicLink(),
-      'Source file is not a regular file: ' + relative);
+    const sourceStat = fs.lstatSync(from);
+    requireThat(sourceStat.isFile() && !sourceStat.isSymbolicLink() && sourceStat.nlink === 1,
+      'Source file is not an independent regular file: ' + relative);
     const to = safeImportDestination(root, relative);
     return { from, to, relative };
   });
