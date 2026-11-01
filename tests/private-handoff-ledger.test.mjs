@@ -60,3 +60,40 @@ test('symlink ledger is rejected', () => fixture(ledger => {
   fs.symlinkSync(target, ledger);
   assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => pr), /regular file|symlink/);
 }));
+
+test('non-repository GitHub URL cannot mark a handoff staged', () => fixture(ledger => {
+  assert.throws(() => withPrivateHandoffLedger(ledger, handoff,
+    () => 'https://github.com/attacker/other/pull/1'), /review PR URL/);
+  assert.equal(JSON.parse(fs.readFileSync(ledger)).records[0].status, 'pending');
+}));
+test('malformed prior pending entry blocks staging before callback', () => fixture(ledger => {
+  fs.writeFileSync(ledger, JSON.stringify({ schemaVersion: 1, records: [
+    { sourceArtifactId: 'private:broken', lessonId: 'demo', lessonVersion: '1',
+      bundleSha256: 'b'.repeat(64), status: 'approved', updatedAt: '2026-11-01T00:00:00Z' }
+  ] }));
+  let called = false;
+  assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => {
+    called = true;
+    return pr;
+  }), /Invalid private replay ledger record/);
+  assert.equal(called, false);
+}));
+test('duplicate existing source IDs block staging even for a new lesson', () => fixture(ledger => {
+  const make = (lessonId, version) => ({
+    sourceArtifactId: 'private:duplicate', lessonId, lessonVersion: version,
+    bundleSha256: 'c'.repeat(64), status: 'pending', updatedAt: '2026-11-01T00:00:00Z'
+  });
+  fs.writeFileSync(ledger, JSON.stringify({ schemaVersion: 1,
+    records: [make('demo-one', '1'), make('demo-two', '2')] }));
+  assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => pr),
+    /Duplicate entries/);
+}));
+test('invalid staged PR URL in existing ledger fails closed', () => fixture(ledger => {
+  fs.writeFileSync(ledger, JSON.stringify({ schemaVersion: 1, records: [{
+    sourceArtifactId: 'private:other', lessonId: 'demo', lessonVersion: '1',
+    bundleSha256: 'c'.repeat(64), status: 'staged',
+    updatedAt: '2026-11-01T00:00:00Z', prUrl: 'https://github.com/attacker/other/pull/1'
+  }] }));
+  assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => pr),
+    /Invalid private replay ledger record/);
+}));
