@@ -48,6 +48,19 @@ const UNSAFE_HTML_NAVIGATION = [
   /\b(?:href|src|action|formaction|poster|data|srcset)\s*=\s*["']?\s*(?:javascript:|data:|vbscript:|file:|blob:)/i,
   /\b(?:location\.(?:href|assign|replace)|window\.location|document\.location)\s*(?:=|\()/i
 ];
+// Reject outbound-network and navigation primitives in reviewed student scripts.
+// Browser smoke checks cover runtime requests on initial load, but a delayed or
+// click-triggered script could otherwise evade those short smoke windows.
+// Local fetch() remains permitted for manifest-listed lesson assets.
+const SCRIPT_NETWORK_RISKS = [
+  /\b(?:fetch|WebSocket|EventSource|importScripts)\s*\(\s*['"\x60]\s*\/\//i,
+  /\b(?:new\s+)?XMLHttpRequest\s*\(/i,
+  /\b(?:navigator\.)?sendBeacon\s*\(/i,
+  /\b(?:window\.)?open\s*\(/i,
+  /\b(?:window\.|document\.)?location(?:\.href)?\s*=/i,
+  /\b(?:window\.|document\.)?location\.(?:assign|replace)\s*\(/i
+];
+const REMOTE_SCRIPT_LITERAL = /\bhttps?:\/\/[a-z0-9]/i;
 export function auditPublicPackage(root, paths) {
   const base = fs.realpathSync(root);
   for (const relative of paths) {
@@ -76,6 +89,11 @@ export function auditPublicPackage(root, paths) {
     if (SECRET_PATTERNS.some(pattern => pattern.test(data)) ||
         (relative.startsWith('lessons/') && INTERNAL_CONTENT.test(data))) {
       throw new Error('Potential secret or teacher-only material in public package: ' + relative);
+    }
+    if (/\.(?:html?|m?js)$/i.test(relative) &&
+        (SCRIPT_NETWORK_RISKS.some(pattern => pattern.test(data)) ||
+         (/\.(?:m?js)$/i.test(relative) && REMOTE_SCRIPT_LITERAL.test(data)))) {
+      throw new Error('Unsafe outbound network or navigation code in public lesson: ' + relative);
     }
     if (/\.html?$/i.test(relative) &&
         (EXTERNAL_MARKUP.some(pattern => pattern.test(data)) ||
