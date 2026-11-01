@@ -140,3 +140,7 @@ or a successful draft-PR creation. Do not move the source bundle, key, or detach
 record into the public repository. Production still requires the independently
 provisioned runner, durable replay ledger, private source transport and human
 release process.
+
+### Trusted runner integration-branch freshness (2026-11-01)
+
+Before creating a draft review branch, the private staging entrypoint now fetches the exact `refs/heads/feature/qa-gated-publishing` from the verified `origin` and requires `HEAD` to match `FETCH_HEAD`. This prevents staging with an outdated local QA gate after the integration branch advances. The check is after signature verification and before the replay ledger reserves a source version. It does **not** provision a runner, authenticate the curriculum reviewers, protect GitHub main, or prevent a later base-branch change during PR review; CI and independent review must rerun against the current head. A failed fetch or stale checkout blocks staging; never bypass it by weakening the gate.
