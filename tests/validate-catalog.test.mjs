@@ -213,3 +213,14 @@ test('staging rejects mismatched independent source fingerprint before GitHub', 
   assert.notEqual(run.status, 0);
   assert.match(run.stderr, /Private handoff fingerprint mismatch/);
 }));
+
+test('staging refuses apply without separately signed provenance even with digest and token', () => withFixture(f => {
+  const staging = fileURLToPath(new URL('../scripts/stage-reviewed-package.mjs', import.meta.url));
+  const digest = fingerprintReviewedBundle(f.root).sha256;
+  const run = spawnSync(process.execPath, [staging, f.root,
+    '--apply', '--acknowledge-public-reviewed', '--expected-bundle-sha256=' + digest], {
+    encoding: 'utf8', env: { ...process.env, GH_TOKEN: 'test-only-not-a-token' }
+  });
+  assert.notEqual(run.status, 0);
+  assert.match(run.stderr, /independently signed producer record and trusted public key/);
+}));
