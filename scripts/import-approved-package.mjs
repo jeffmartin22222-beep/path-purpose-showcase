@@ -8,19 +8,11 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { validateCatalog } from './validate-catalog.mjs';
+import { safeImportDestination } from './safe-import-path.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 function requireThat(condition, message) {
   if (!condition) throw new Error(message);
-}
-function safeDestination(relative) {
-  requireThat(typeof relative === 'string' &&
-    /^[a-zA-Z0-9._/-]+$/.test(relative) &&
-    !relative.split('/').some(x => x === '..' || x === '.' || x === ''),
-    'Unsafe import path: ' + relative);
-  const destination = path.resolve(root, ...relative.split('/'));
-  requireThat(destination.startsWith(path.resolve(root) + path.sep), 'Destination escapes repository');
-  return destination;
 }
 function importPackage() {
   const [sourceArg, ...flags] = process.argv.slice(2);
@@ -48,8 +40,7 @@ function importPackage() {
     requireThat(from.startsWith(source + path.sep), 'Source escapes private bundle');
     requireThat(fs.lstatSync(from).isFile() && !fs.lstatSync(from).isSymbolicLink(),
       'Source file is not a regular file: ' + relative);
-    const to = safeDestination(relative);
-    requireThat(!fs.existsSync(to), 'Refusing to overwrite existing file: ' + relative);
+    const to = safeImportDestination(root, relative);
     return { from, to, relative };
   });
   const apply = flags.includes('--apply');
