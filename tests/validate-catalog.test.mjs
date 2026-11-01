@@ -121,6 +121,8 @@ test('rejects missing required QA check', () => withFixture(f => {
   const reportPath = 'evidence/demo/technical/report.json';
   const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
   report.checks = report.checks.filter(x => x.id !== 'ipad');
+  report.artifacts = report.artifacts.filter(x => !x.path.endsWith('/ipad-test-record.txt'));
+  fs.unlinkSync(path.join(f.root, 'evidence/demo/technical/ipad-test-record.txt'));
   f.write(reportPath, JSON.stringify(report));
   assert.throws(() => validateCatalog(f.root), /Required QA check missing/);
 }));
