@@ -7,6 +7,19 @@ import path from 'node:path';
  * copyright or security review. Binary media/screenshots require human audit.
  */
 const BLOCKED_NAME = /(?:^|\/)(?:\.env(?:\..+)?|\.npmrc|\.netrc|id_rsa|id_ed25519|[^/]*\.(?:pem|p12|pfx|key|sqlite|db|map)|[^/]*(?:answer[-_ ]?key|teacher[-_ ]?only|student[-_ ]?roster|credentials?|private[-_ ]?key|secrets?)[^/]*)$/i;
+// Public assets are executable/downloadable from GitHub Pages. Deny unknown formats
+// rather than silently copying archives, installers, databases or active documents.
+// New media formats require an explicit security and licensing review.
+const LESSON_EXTENSIONS = new Set([
+  '.html', '.htm', '.js', '.mjs', '.css', '.json', '.txt', '.md',
+  '.vtt', '.srt', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif',
+  '.avif', '.mp4', '.webm', '.mp3', '.ogg', '.wav', '.woff', '.woff2'
+]);
+// Evidence must be sanitized review summaries and passive screenshots/text.
+// Never publish raw browser recordings, active HTML, scripts or binary archives.
+const EVIDENCE_EXTENSIONS = new Set([
+  '.json', '.txt', '.md', '.csv', '.png', '.jpg', '.jpeg', '.webp', '.avif'
+]);
 const TEXT_FILE = /\.(?:html?|js|mjs|css|json|txt|md|vtt|srt|svg|xml)$/i;
 const SECRET_PATTERNS = [
   /-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----/,
@@ -45,6 +58,11 @@ export function auditPublicPackage(root, paths) {
     }
     if (BLOCKED_NAME.test(relative)) {
       throw new Error('Forbidden public package filename: ' + relative);
+    }
+    const extension = path.extname(relative).toLowerCase();
+    const allowed = relative.startsWith('lessons/') ? LESSON_EXTENSIONS : EVIDENCE_EXTENSIONS;
+    if (!allowed.has(extension)) {
+      throw new Error('Unsupported public package file type: ' + relative);
     }
     const absolute = path.resolve(base, ...relative.split('/'));
     const resolved = fs.realpathSync(absolute);
