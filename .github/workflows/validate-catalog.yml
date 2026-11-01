@@ -25,6 +25,8 @@ jobs:
         run: node --check scripts/fingerprint-reviewed-bundle.mjs
       - name: Check signed producer handoff verifier syntax
         run: node --check scripts/verify-signed-handoff.mjs
+      - name: Check private replay ledger syntax
+        run: node --check scripts/private-handoff-ledger.mjs
       - name: Run QA gate negative and positive tests
         run: node --test tests/*.test.mjs
       - name: Verify approved catalog and evidence integrity
