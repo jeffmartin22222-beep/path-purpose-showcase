@@ -55,3 +55,18 @@ private metadata disclosure; it **does not** prove reports are genuine or
 that artifacts are free of private content. Independent reviewers must still
 inspect each public artifact and physical-device result. Six synthetic negative
 tests cover unexpected metadata, duplicates, and invalid generation metadata.
+
+### Media container signature preflight (2026-11-01)
+
+The public-package auditor now checks recognizable header signatures for approved
+PNG/JPEG/GIF/WebP/AVIF images, MP4/WebM video, MP3/Ogg/WAV audio and WOFF/WOFF2
+fonts, including passive evidence screenshots. A renamed HTML/script payload
+with a media extension is rejected before public staging. Synthetic tests cover
+each allowed media family and a masquerading active-document case.
+
+**Limitations:** a matching header is not proof that a file decodes safely,
+is complete, has correct codecs/captions, contains no private information,
+or is licensed for commercial use. Binary media and screenshots still require
+human inspection and actual browser/mobile playback; the separate four-pass
+QA and owner authorization remain mandatory. This does not establish a
+private producer connection or authorize publishing.
