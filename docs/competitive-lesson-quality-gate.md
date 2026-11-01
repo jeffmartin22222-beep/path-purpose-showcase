@@ -47,3 +47,7 @@ a numeric iOS/iPadOS version, and dated testing before signoff. Emulator and
 Chromium labels fail closed. This blocks common accidental substitution of
 browser emulation for physical testing; it does **not** prove that claimed
 device testing actually occurred. Independent human verification remains mandatory.
+
+### Independent-completion text lint expansion (2026-11-01)
+
+The per-lesson benchmark validator now blocks additional high-signal required-work wording: replying to classmates, waiting for teacher/peer grading or approval, attending scheduled live sessions, requiring parent/adult help, joining groups, mandatory pencils/notebooks/printers, printing handouts, and required outdoor trips. It scans HTML, JavaScript, captions, SVG and CSV text where present and referenced. Synthetic negative and optional-material positive tests exercise the rules. This remains a conservative **text lint**, not proof of semantic independence: spoken video directions, visual prompts, euphemisms and actual LMS progression require genuine solo end-to-end human QA. Do not count these tests as a competitor benchmark, rights clearance or physical iOS test.
