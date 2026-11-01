@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { auditPublicPackage } from './audit-public-package.mjs';
 import { fileURLToPath } from 'node:url';
 
 const DEFAULT_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -67,6 +68,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
     Array.isArray(catalog.lessons), 'Invalid catalog schema version or lessons');
   const ids = new Set();
   const referencedEvidenceFiles = new Set();
+  const publicFiles = new Set();
   for (const lesson of catalog.lessons) {
     requireThat(isObject(lesson) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(lesson.id || ''),
       'Invalid lesson ID');
@@ -82,6 +84,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
       'Lesson content SHA-256 mismatch: ' + lesson.id);
     requireThat(Array.isArray(lesson.assets), 'Missing assets manifest: ' + lesson.id);
     const files = [{ path: lesson.entry, sha256: lesson.sha256 }];
+    publicFiles.add(lesson.entry);
     const seen = new Set([lesson.entry]);
     for (const asset of lesson.assets) {
       requireThat(isObject(asset) && typeof asset.path === 'string' &&
@@ -92,6 +95,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
       const bytes = readFile(root, asset.path, 'lessons/' + lesson.id + '/', 95 * 1024 * 1024);
       requireThat(sha256(bytes) === asset.sha256, 'Asset SHA-256 mismatch: ' + asset.path);
       files.push({ path: asset.path, sha256: asset.sha256 });
+      publicFiles.add(asset.path);
     }
     requireThat(JSON.stringify([...seen].sort()) === JSON.stringify(lessonFiles(root, lesson.id)),
       'Lesson package contains unlisted files: ' + lesson.id);
@@ -117,6 +121,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         requireThat(typeof evidencePath === 'string' && evidencePath.endsWith('.json'),
           'Evidence must be a JSON report: ' + gate);
         referencedEvidenceFiles.add(evidencePath);
+        publicFiles.add(evidencePath);
         const report = JSON.parse(readFile(root, evidencePath, prefix).toString('utf8'));
         requireThat(isObject(report) && report.lessonId === lesson.id &&
           report.version === lesson.version && report.gate === gate &&
@@ -142,6 +147,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
           requireThat(isObject(artifact) && /^[a-f0-9]{64}$/.test(artifact.sha256 || ''),
             'Invalid evidence artifact hash');
           referencedEvidenceFiles.add(artifact.path);
+          publicFiles.add(artifact.path);
           const bytes = readFile(root, artifact.path, prefix);
           requireThat(sha256(bytes) === artifact.sha256, 'Evidence artifact hash mismatch: ' + artifact.path);
         }
@@ -178,6 +184,10 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         'Unreferenced evidence file: ' + relative);
     }
   }
+  // Static defense-in-depth: reject common secrets, teacher-only filenames and
+  // external active HTML/CSS references before any approved package is public.
+  // This cannot replace human review of screenshots, binaries or content rights.
+  auditPublicPackage(root, [...publicFiles]);
   return { approvedLessons: catalog.lessons.length };
 }
 
