@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import net from 'node:net';
 
 const WEIGHTS = Object.freeze({
   visual: 15, video: 15, interactive: 20, solo: 15,
@@ -39,8 +40,13 @@ function referenceUrl(url) {
   if (!text(url)) return false;
   try {
     const u = new URL(url);
-    return u.protocol === 'https:' && !u.username && !u.password && !!u.hostname &&
-      !['localhost', '127.0.0.1'].includes(u.hostname);
+    const host = u.hostname.toLowerCase().replace(/\.$/, '');
+    // IANA example/test/invalid domains and IP literals are not public
+    // competitor documentation. A syntactically valid URL is not evidence.
+    const reserved = /(?:^|\.)(?:invalid|test|localhost|example)$/.test(host) ||
+      /(?:^|\.)example\.(?:com|net|org)$/.test(host);
+    return u.protocol === 'https:' && !u.username && !u.password &&
+      !!host && !reserved && !net.isIP(host.replace(/^\[|\]$/g, ''));
   } catch { return false; }
 }
 /**
@@ -67,6 +73,16 @@ export function validateBenchmark(root, lesson) {
   check(text(report.reviewedBy, 3) && time(report.reviewedAt) &&
     report.approval === 'approved' && report.superiorityClaim === 'not_claimed',
     'Benchmark lacks human signoff or makes unverified superiority claim: ' + lesson.id);
+  const reviewedMs = Date.parse(report.reviewedAt);
+  check(reviewedMs <= Date.now() + 5 * 60 * 1000,
+    'Benchmark review timestamp is in the future: ' + lesson.id);
+  // A benchmark is the final, version-bound approval, not a forecast of
+  // pending content/rights/technical reviews. Equal timestamps are allowed.
+  check(time(lesson.rights?.reviewedAt) &&
+    Date.parse(lesson.rights.reviewedAt) <= reviewedMs &&
+    QA_GATES.every(gate => time(lesson.qa?.[gate]?.reviewedAt) &&
+      Date.parse(lesson.qa[gate].reviewedAt) <= reviewedMs),
+    'Benchmark predates required rights or four-pass QA review: ' + lesson.id);
   check(Array.isArray(report.comparisons) && report.comparisons.length === PROVIDERS.length,
     'Benchmark missing competitor comparison: ' + lesson.id);
   const providers = new Set();
@@ -84,6 +100,8 @@ export function validateBenchmark(root, lesson) {
     } else {
       check(referenceUrl(ref.referenceUrl) && time(ref.checkedAt),
         'Missing dated HTTPS comparison source: ' + ref.provider);
+      check(Date.parse(ref.checkedAt) <= reviewedMs,
+        'Comparison checked after benchmark signoff: ' + ref.provider);
     }
   }
   check(PROVIDERS.every(p => providers.has(p)), 'Missing required comparison provider');
