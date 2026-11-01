@@ -88,10 +88,13 @@ test('rejects active URI schemes and scripted navigation in approved HTML', () =
 
 // These tests are synthetic; no fixture is approved or copied into the live catalog.
 test('allows approved student media and passive evidence formats', () => fixture(({root,write}) => {
-  write('lessons/demo/clip.mp4', 'synthetic video bytes');
-  write('lessons/demo/font.woff2', 'synthetic font bytes');
+  // Signature-only fixtures: these are NOT decoded media or QA evidence.
+  write('lessons/demo/clip.mp4', Buffer.concat([
+    Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom0000isom')]));
+  write('lessons/demo/font.woff2', Buffer.from('wOF2 synthetic fixture'));
   write('lessons/demo/captions.vtt', 'WEBVTT\\n\\n00:00:00.000 --> 00:00:01.000\\nCell');
-  write('evidence/demo/technical/screenshot.png', 'synthetic screenshot bytes');
+  write('evidence/demo/technical/screenshot.png', Buffer.concat([
+    Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from('synthetic fixture')]));
   assert.equal(auditPublicPackage(root, [
     'lessons/demo/clip.mp4', 'lessons/demo/font.woff2',
     'lessons/demo/captions.vtt', 'evidence/demo/technical/screenshot.png'
@@ -158,5 +161,42 @@ test('audits catalog JSON and blocks teacher keys or credentials', () => fixture
     write('catalog/approved.json', JSON.stringify({schemaVersion:'1.0.0',lessons:[],...extra}));
     assert.throws(() => auditPublicPackage(root, ['catalog/approved.json']),
       /Potential secret or teacher-only material/);
+  }
+}));
+
+test('rejects script or HTML bytes disguised as allowed public media', () => fixture(({root,write}) => {
+  for (const extension of [
+    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif',
+    '.mp4', '.webm', '.mp3', '.ogg', '.wav', '.woff', '.woff2'
+  ]) {
+    const relative = 'lessons/demo/masquerade' + extension;
+    write(relative, '<script>fetch("/private")</script>');
+    assert.throws(() => auditPublicPackage(root, [relative]),
+      /Invalid public media signature/, relative);
+  }
+  write('evidence/demo/technical/screenshot.png', '<html>not an image</html>');
+  assert.throws(() => auditPublicPackage(root, ['evidence/demo/technical/screenshot.png']),
+    /Invalid public media signature/);
+}));
+
+test('accepts recognized media container signatures without claiming decoding', () => fixture(({root,write}) => {
+  const headers = {
+    '.png': Buffer.from('89504e470d0a1a0a', 'hex'),
+    '.jpg': Buffer.from('ffd8ff', 'hex'),
+    '.gif': Buffer.from('GIF89a'),
+    '.webp': Buffer.from('RIFF0000WEBP'),
+    '.avif': Buffer.from('0000ftypavif0000'),
+    '.mp4': Buffer.from('0000ftypisom0000'),
+    '.webm': Buffer.from('1a45dfa3', 'hex'),
+    '.mp3': Buffer.from('ID3'),
+    '.ogg': Buffer.from('OggS'),
+    '.wav': Buffer.from('RIFF0000WAVE'),
+    '.woff': Buffer.from('wOFF'),
+    '.woff2': Buffer.from('wOF2')
+  };
+  for (const [extension, header] of Object.entries(headers)) {
+    const relative = 'lessons/demo/fixture' + extension;
+    write(relative, Buffer.concat([header, Buffer.from('synthetic fixture only')]));
+    assert.equal(auditPublicPackage(root, [relative]).auditedFiles, 1, relative);
   }
 }));
