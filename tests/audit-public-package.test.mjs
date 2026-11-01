@@ -42,3 +42,22 @@ test('rejects traversal and symlinks', () => fixture(({root,write}) => {
   fs.symlinkSync(path.join(root,'lessons/demo/index.html'),path.join(root,'lessons/demo/alias.html'));
   assert.throws(() => auditPublicPackage(root, ['lessons/demo/alias.html']), /Unsafe public package file/);
 }));
+
+test('allows a passive, self-contained SVG illustration', () => fixture(({root,write}) => {
+  write('lessons/demo/cell.svg', '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="12"/></svg>');
+  assert.equal(auditPublicPackage(root, ['lessons/demo/cell.svg']).auditedFiles, 1);
+}));
+test('rejects executable SVG even without external network dependencies', () => fixture(({root,write}) => {
+  write('lessons/demo/cell.svg', '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><circle r="10"/></svg>');
+  assert.throws(() => auditPublicPackage(root, ['lessons/demo/cell.svg']), /Executable or external SVG/);
+  write('lessons/demo/cell.svg', '<svg><foreignObject><div>HTML</div></foreignObject></svg>');
+  assert.throws(() => auditPublicPackage(root, ['lessons/demo/cell.svg']), /Executable or external SVG/);
+  write('lessons/demo/cell.svg', '<svg><script>alert(1)</script></svg>');
+  assert.throws(() => auditPublicPackage(root, ['lessons/demo/cell.svg']), /Executable or external SVG/);
+}));
+test('rejects remote and javascript SVG references', () => fixture(({root,write}) => {
+  write('lessons/demo/cell.svg', '<svg><image href="https://example.com/tracker.png"/></svg>');
+  assert.throws(() => auditPublicPackage(root, ['lessons/demo/cell.svg']), /Executable or external SVG/);
+  write('lessons/demo/cell.svg', '<svg><a xlink:href="javascript:alert(1)"><circle r="10"/></a></svg>');
+  assert.throws(() => auditPublicPackage(root, ['lessons/demo/cell.svg']), /Executable or external SVG/);
+}));
