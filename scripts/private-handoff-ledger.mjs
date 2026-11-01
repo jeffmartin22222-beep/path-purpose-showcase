@@ -49,10 +49,15 @@ export function withPrivateHandoffLedger(ledgerPath, handoff, work) {
   if (fs.realpathSync(directory) !== directory)
     throw new Error('Replay ledger parent must not be a symlink');
   for (const candidate of [ledgerPath, ledgerPath + '.lock']) {
-    if (fs.existsSync(candidate) && !fs.lstatSync(candidate).isFile())
-      throw new Error('Replay ledger or lock must be a regular file');
-    if (fs.existsSync(candidate) && fs.lstatSync(candidate).isSymbolicLink())
-      throw new Error('Replay ledger or lock cannot be a symlink');
+    let stat;
+    try { stat = fs.lstatSync(candidate); }
+    catch (error) {
+      if (error.code === 'ENOENT') continue;
+      throw error;
+    }
+    // lstat (rather than existsSync) also catches dangling symlinks.
+    if (stat.isSymbolicLink() || !stat.isFile())
+      throw new Error('Replay ledger or lock must be a regular non-symlink file');
   }
   const lockPath = ledgerPath + '.lock';
   let lock;
