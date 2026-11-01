@@ -66,8 +66,13 @@ function fixture() {
     entrySha256: sha256, packageSha256, reviewedBy: 'Synthetic fixture reviewer',
     reviewedAt, approval: 'approved', superiorityClaim: 'not_claimed',
     comparisons: ['subject.com', 'schoolsplp-lincoln', 'edmentum', 'edgenuity']
-      .map(provider => ({ provider, evidenceType: 'unavailable',
-        notes: 'Synthetic fixture only; no actual competitor observation has occurred.' })),
+      .map(provider => provider === 'subject.com'
+        ? { provider, evidenceType: 'public_documentation',
+          referenceUrl: 'https://example.invalid/synthetic-test-reference',
+          checkedAt: reviewedAt,
+          notes: 'Synthetic fixture only; this URL is NOT real competitor evidence.' }
+        : { provider, evidenceType: 'unavailable',
+          notes: 'Synthetic fixture only; no actual competitor observation has occurred.' }),
     scores: { visual: 14, video: 14, interactive: 19, solo: 14,
       rigor: 14, uxAccessibility: 9, feedback: 9 },
     rubricNotes: Object.fromEntries(['visual', 'video', 'interactive', 'solo',
@@ -420,4 +425,14 @@ test('benchmark rejects required supplies', () => withFixture(f => {
 test('benchmark hash tampering is rejected', () => withFixture(f => {
   f.write(f.lesson.benchmark.path, '{"fake":"record"}');
   assert.throws(() => validateCatalog(f.root), /Benchmark SHA-256 mismatch/);
+}));
+
+test('benchmark rejects all-unavailable competitive references', () => withFixture(f => {
+  changeBenchmark(f, r => {
+    r.comparisons = r.comparisons.map(x => ({
+      provider: x.provider, evidenceType: 'unavailable',
+      notes: 'No actual source is available; independent comparison must be reviewed.'
+    }));
+  });
+  assert.throws(() => validateCatalog(f.root), /lacks a verifiable comparison reference/);
 }));

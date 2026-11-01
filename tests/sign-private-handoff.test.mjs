@@ -120,8 +120,13 @@ test('synthetic reviewed-package fixture signs to a detached private record, ref
     reviewedBy: 'Synthetic fixture reviewer', reviewedAt,
     approval: 'approved', superiorityClaim: 'not_claimed',
     comparisons: ['subject.com', 'schoolsplp-lincoln', 'edmentum', 'edgenuity']
-      .map(provider => ({ provider, evidenceType: 'unavailable',
-        notes: 'Synthetic fixture only; no competitor has been actually reviewed.' })),
+      .map(provider => provider === 'subject.com'
+        ? { provider, evidenceType: 'public_documentation',
+          referenceUrl: 'https://example.invalid/synthetic-test-reference',
+          checkedAt: reviewedAt,
+          notes: 'Synthetic fixture only; this URL is NOT real competitor evidence.' }
+        : { provider, evidenceType: 'unavailable',
+          notes: 'Synthetic fixture only; no actual competitor observation has occurred.' }),
     scores: { visual: 14, video: 14, interactive: 19, solo: 14,
       rigor: 14, uxAccessibility: 9, feedback: 9 },
     rubricNotes: Object.fromEntries(['visual', 'video', 'interactive', 'solo',

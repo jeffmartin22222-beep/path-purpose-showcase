@@ -87,6 +87,9 @@ export function validateBenchmark(root, lesson) {
     }
   }
   check(PROVIDERS.every(p => providers.has(p)), 'Missing required comparison provider');
+  check(report.comparisons.some(ref =>
+    ['direct_observation', 'public_documentation'].includes(ref.evidenceType)),
+    'Benchmark lacks a verifiable comparison reference; route for human review');
   // Marketing descriptions are allowed as labeled context, never as measured UX.
   keys(report.scores, Object.keys(WEIGHTS), 'scores');
   keys(report.rubricNotes, Object.keys(WEIGHTS), 'rubric notes');
