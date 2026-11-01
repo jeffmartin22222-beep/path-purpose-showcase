@@ -265,3 +265,44 @@ test('scans catalog notes for credential-like strings', () => withFixture(f => {
   f.lesson.rights.notes = 'api_key:SensitiveToken123456'; f.save();
   assert.throws(() => validateCatalog(f.root), /Potential secret or teacher-only material/);
 }));
+
+test('rejects non-UTC or structured catalog generation metadata', () => withFixture(f => {
+  f.catalog.generatedAt = { privateReviewNotes: 'Synthetic internal only' };
+  f.save();
+  assert.throws(() => validateCatalog(f.root), /Invalid catalog generation timestamp/);
+}));
+test('rejects unexpected fields in public QA reports', () => withFixture(f => {
+  const reportPath = 'evidence/demo/technical/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
+  report.internalReviewMemo = 'Synthetic private notes must never publish';
+  f.write(reportPath, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Unexpected public catalog field/);
+}));
+test('rejects unreviewed metadata nested in QA checks', () => withFixture(f => {
+  const reportPath = 'evidence/demo/content/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
+  report.checks[0].privateScoringGuide = 'Synthetic teacher-only content';
+  f.write(reportPath, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Unexpected public catalog field/);
+}));
+test('rejects unexpected public evidence artifact fields', () => withFixture(f => {
+  const reportPath = 'evidence/demo/pedagogy/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
+  report.artifacts[0].privateSourcePath = '/private/synthetic';
+  f.write(reportPath, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Unexpected public catalog field/);
+}));
+test('rejects duplicate QA checks even when each says passed', () => withFixture(f => {
+  const reportPath = 'evidence/demo/technical/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
+  report.checks.push({ ...report.checks[0] });
+  f.write(reportPath, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Duplicate QA check/);
+}));
+test('rejects duplicate evidence artifact references', () => withFixture(f => {
+  const reportPath = 'evidence/demo/experience/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
+  report.artifacts.push({ ...report.artifacts[0] });
+  f.write(reportPath, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Duplicate evidence artifact/);
+}));
