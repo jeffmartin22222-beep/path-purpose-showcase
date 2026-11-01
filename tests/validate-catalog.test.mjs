@@ -150,3 +150,30 @@ test('catalog rejects teacher-only text even if all hashes and reports are updat
   repinFixtureHtml(f);
   assert.throws(() => validateCatalog(f.root), /Potential secret or teacher-only/);
 }));
+
+test('trusted-runner handoff dry-run needs no credentials and never pushes', () => withFixture(f => {
+  const staging = fileURLToPath(new URL('../scripts/stage-reviewed-package.mjs', import.meta.url));
+  const run = spawnSync(process.execPath, [staging, f.root], {
+    encoding: 'utf8', env: { ...process.env, GH_TOKEN: '' }
+  });
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /DRY RUN/);
+  assert.match(run.stdout, /No GitHub calls, commits, or file copies/);
+}));
+test('trusted-runner refuses apply without human acknowledgement', () => withFixture(f => {
+  const staging = fileURLToPath(new URL('../scripts/stage-reviewed-package.mjs', import.meta.url));
+  const run = spawnSync(process.execPath, [staging, f.root, '--apply'], {
+    encoding: 'utf8', env: { ...process.env, GH_TOKEN: '' }
+  });
+  assert.notEqual(run.status, 0);
+  assert.match(run.stderr, /explicit human reviewed\/public acknowledgement/);
+}));
+test('trusted-runner refuses upload without private credentials', () => withFixture(f => {
+  const staging = fileURLToPath(new URL('../scripts/stage-reviewed-package.mjs', import.meta.url));
+  const run = spawnSync(process.execPath, [staging, f.root,
+    '--apply', '--acknowledge-public-reviewed'], {
+    encoding: 'utf8', env: { ...process.env, GH_TOKEN: '' }
+  });
+  assert.notEqual(run.status, 0);
+  assert.match(run.stderr, /GH_TOKEN required/);
+}));
