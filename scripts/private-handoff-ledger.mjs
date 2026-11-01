@@ -19,7 +19,7 @@ function validateExistingLedger(ledger) {
         ['sourceArtifactId', 'lessonId', 'lessonVersion', 'updatedAt'].some(k =>
           typeof record[k] !== 'string' || !record[k].trim()) ||
         !/^[a-f0-9]{64}$/.test(record.bundleSha256) ||
-        (staged && !/^https:\\/\\/github\\.com\\/jeffmartin22222-beep\\/path-purpose-showcase\\/pull\\/[1-9][0-9]*$/.test(record.prUrl))) {
+        (staged && !/^https:\/\/github\.com\/jeffmartin22222-beep\/path-purpose-showcase\/pull\/[1-9][0-9]*$/.test(record.prUrl))) {
       throw new Error('Invalid private replay ledger record');
     }
     const versionKey = JSON.stringify([record.lessonId, record.lessonVersion]);
