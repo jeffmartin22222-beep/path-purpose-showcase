@@ -56,6 +56,18 @@ export function auditPublicPackage(root, paths) {
         EXTERNAL_MARKUP.slice(2, 4).some(pattern => pattern.test(data))) {
       throw new Error('External CSS dependency in public package: ' + relative);
     }
+    // SVG is an active document format, not merely a passive image. A malicious
+    // SVG can execute scripts or load remote content when opened directly.
+    // Keep approved student media as self-contained, non-executable artwork.
+    if (/\.svg$/i.test(relative) && [
+      /<(?:script|foreignObject|iframe|object|embed)\b/i,
+      /\son[a-z]+\s*=/i,
+      /\b(?:href|xlink:href)\s*=\s*["']?\s*(?:https?:|\/\/|javascript:|data:)/i,
+      /\burl\(\s*["']?\s*(?:https?:|\/\/|javascript:)/i,
+      /@import\b/i
+    ].some(pattern => pattern.test(data))) {
+      throw new Error('Executable or external SVG content in public package: ' + relative);
+    }
   }
   return { auditedFiles: paths.length };
 }
