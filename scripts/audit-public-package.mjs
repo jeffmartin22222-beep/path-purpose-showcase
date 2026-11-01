@@ -24,6 +24,16 @@ const EXTERNAL_MARKUP = [
   /url\(\s*["']?\s*(?:https?:)?\/\//i,
   /\b(?:fetch|WebSocket|EventSource)\s*\(\s*["']\s*(?:https?:)?\/\//i
 ];
+// Reject HTML URL-base overrides, silent redirects and embedded documents.
+// These can evade a remote-src check or turn local-looking asset URLs remote.
+// Static lint is defense in depth; actual browser network tests remain required.
+const UNSAFE_HTML_NAVIGATION = [
+  /<base\b/i,
+  /<meta\b[^>]*\bhttp-equiv\s*=\s*["']?\s*refresh\b/i,
+  /\bsrcdoc\s*=/i,
+  /\b(?:href|src|action|formaction|poster|data|srcset)\s*=\s*["']?\s*(?:javascript:|data:|vbscript:|file:|blob:)/i,
+  /\b(?:location\.(?:href|assign|replace)|window\.location|document\.location)\s*(?:=|\()/i
+];
 export function auditPublicPackage(root, paths) {
   const base = fs.realpathSync(root);
   for (const relative of paths) {
@@ -49,7 +59,8 @@ export function auditPublicPackage(root, paths) {
       throw new Error('Potential secret or teacher-only material in public package: ' + relative);
     }
     if (/\.html?$/i.test(relative) &&
-        EXTERNAL_MARKUP.some(pattern => pattern.test(data))) {
+        (EXTERNAL_MARKUP.some(pattern => pattern.test(data)) ||
+         UNSAFE_HTML_NAVIGATION.some(pattern => pattern.test(data)))) {
       throw new Error('External dependency or link in student-facing HTML: ' + relative);
     }
     if (/\.css$/i.test(relative) &&
