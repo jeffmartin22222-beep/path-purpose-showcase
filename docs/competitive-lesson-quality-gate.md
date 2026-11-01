@@ -1,26 +1,31 @@
-# Per-lesson competitive quality gate (proposed implementation contract)
+# Per-lesson competitive quality gate (v1 implementation)
 
-**Status:** specification; not yet wired to publishing. Related issues #3–#7.
+**Status (2026-11-01):** CI schema/score/hash/QA/print-asset checks implemented on development branch only. The catalog remains empty. No competitor hands-on comparisons, real lesson approvals, physical iOS tests or vendor-ready PDF proofs are asserted.
 
-## Required lesson evidence
-Store a versioned `benchmark.json` per lesson with lesson_id, content_version, date, reviewer, reference URLs and access type, category scores, rubric notes, gaps, remediation, four QA gate statuses and approval. Never fabricate comparison results. Competitor marketing descriptions are labeled as such, not hands-on evidence.
+## Per-lesson contract
 
-## Scoring / pass criteria
-Visual 15, videos 15, meaningful interactives 20, independent student-centered learning 15, academic rigor 15, navigation/accessibility 10, feedback/assessment 10. Target >=90/100, with human reviewer sign-off and no critical weakness. Subject.com is the **minimum comparison reference** where comparable evidence is available, not an automatically verified quality floor.
+Each approved lesson MUST include \`benchmark: {path,sha256}\` pointing to \`evidence/<lesson-id>/benchmark.json\`. The public benchmark report uses \`schemaVersion: "1.0.0"\`, matches the catalog's lesson ID, content version, entry hash and full package hash, and has a human reviewer and UTC timestamp. Its hash is checked, it is included in the public-file security audit and in the reviewed-package importer.
 
-## Hard gates
-- Solo, asynchronous, no peers, live meetings or peer-dependent progression.
-- No purchased/household supplies, printer, outside access, travel or parent assistance required. Only school device + internet.
-- Interactive/video content has equivalent printable lesson/unit/course representation; student exports never contain teacher keys.
-- All four QA checks pass: standards/content; engagement/pedagogy; technical/mobile/accessibility; end-to-end student/demo.
-- Drafts never auto-publish. A failed or unknown gate blocks publication.
+See \`catalog/benchmark.schema.json\` and \`scripts/validate-benchmark.mjs\`. The benchmark report includes:
+- Four explicit comparator entries: \`subject.com\`, \`schoolsplp-lincoln\`, \`edmentum\`, \`edgenuity\`. Each is labeled \`direct_observation\`, \`public_documentation\`, \`marketing_claim\` or \`unavailable\`; a dated HTTPS reference is mandatory for the first three. An unavailable comparison requires an explanatory note and must not masquerade as an observation. Subject.com is a comparison target where legitimately observable, **not a measured superiority claim**.
+- Seven integer scores and substantive category rationales: visual 15, video 15, interactive 20, solo 15, rigor 15, UX/accessibility 10, feedback 10. Total >=90; each category >=70% of its maximum. Scores require actual human verification; synthetic fixtures are not evidence.
+- Human \`approval: "approved"\`, \`superiorityClaim: "not_claimed"\`, gaps/remediation arrays, overall notes, five passed hard-gate attestations, and statuses matching all four QA gates.
+- Three distinct, hashed, approved student-facing **HTML print-equivalent assets** under \`lessons/<id>/print/\` for lesson/unit/course scopes. Each must contain a scope-tagged \`<main>\` and substantive content. Human review must confirm interactive/video equivalents, no keys, grayscale legibility and actual scope coverage.
 
-## Implementation
-1. Curriculum builder generates benchmark evidence and lesson artifacts.
-2. Reviewer verifies comparisons, quality and instructional accuracy; requests revisions.
-3. CI validates evidence schema, total scoring, thresholds, gate statuses, version match, export coverage, and tests.
-4. Publisher checks approved artifact version and all gates **server-side**, not just a UI badge.
-5. Pilot on Inside the Cell, Grade 8 Math, one ELA/SS lesson; then enforce for every lesson.
-6. Record competitor reference date and refresh benchmarks periodically as products change.
+## Hard blockers
 
-No proprietary competitor content should be copied without permission.
+No peer/group/live dependencies or progression waits; no required supplies, purchases, printing, outdoors, adults or travel. Only a school-provided device and internet may be required. Human review must check ALL prompts, media, assessments, teacher guides and alternative pathways. Static lint blocks common imperative peer/material phrases but is not semantic proof. Content/standards, engagement/pedagogy, real technical/mobile/video/accessibility/persistence, and end-to-end student/demo QA must all pass on the exact hashed version. Missing benchmark, weak category, total <90, stale hash, unapproved comparison, missing print assets or unverified gates block catalog validation.
+
+The four-pass validator additionally requires \`solo_async\`, \`device_internet_only\`, \`no_peer_wait\`, \`print_equivalents\`, and \`independent_completion\` checks in the relevant QA reports.
+
+## What is NOT implemented or verified
+
+- **No production-ready PDF export engine** or verified lesson/unit/course print-shop PDF, duplex proof, protected teacher edition or physical vendor proof. HTML print-equivalent artifacts are a schema foundation, not a PDF/X, PDF/UA or print-vendor claim. See issue #5.
+- **No automatic independent reviewer authentication**. A JSON signoff can be forged by an authorized committer; require trusted reviewer identity, signed provenance, branch protection and manual audit before any merge.
+- **No real Subject.com/PLP/Edmentum/Edgenuity lesson comparison has been performed by this change.** Marketing references are not hands-on observations. Do not publish comparative superiority claims.
+- **No physical iPhone/iPad or screen-reader evidence was generated** by these automated tests. CI Chromium emulation is not physical Safari.
+- **No trusted private producer-to-GitHub transport** or owner-authorized publication is operational.
+
+## Release discipline
+
+Test on Inside the Cell, Grade 8 math and a contrasting ELA/SS lesson, but apply the gate to every approved lesson. Keep draft/review work private. A green GitHub Actions check is necessary but never sufficient for publishing. No auto-merge or deployment. Related issues: #3, #4, #5, #6, #7.

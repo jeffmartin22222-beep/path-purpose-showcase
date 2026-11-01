@@ -20,8 +20,18 @@ function fixture() {
   const html = '<!doctype html><html><title>Fixture</title><body>Fixture</body></html>';
   const sha256 = hash(html);
   write('lessons/demo/index.html', html);
-  const assets = [];
-  const packageSha256 = hash(JSON.stringify([{ path: 'lessons/demo/index.html', sha256 }]));
+  const assets = ['lesson', 'unit', 'course'].map(scope => {
+    const relative = 'lessons/demo/print/' + scope + '.html';
+    const html = '<!doctype html><html><body><main data-print-scope="' + scope +
+      '"><h1>Synthetic ' + scope + ' print equivalent</h1><p>' +
+      'This is synthetic test-only accessible print representation, not a production workbook or verified PDF.' +
+      '</p></main></body></html>';
+    write(relative, html);
+    return { path: relative, sha256: hash(html) };
+  });
+  const packageSha256 = hash(JSON.stringify([
+    { path: 'lessons/demo/index.html', sha256 }, ...assets
+  ].sort((a, b) => a.path.localeCompare(b.path, 'en'))));
   const qa = {};
   const reviewedAt = '2026-10-31T12:00:00Z';
   for (const [gate, checkIds] of Object.entries(REQUIRED_CHECKS)) {
@@ -51,6 +61,33 @@ function fixture() {
       reviewedBy: 'Fixture only', reviewedAt },
     qa
   };
+  const benchmark = {
+    schemaVersion: '1.0.0', lessonId: 'demo', contentVersion: '1',
+    entrySha256: sha256, packageSha256, reviewedBy: 'Synthetic fixture reviewer',
+    reviewedAt, approval: 'approved', superiorityClaim: 'not_claimed',
+    comparisons: ['subject.com', 'schoolsplp-lincoln', 'edmentum', 'edgenuity']
+      .map(provider => ({ provider, evidenceType: 'unavailable',
+        notes: 'Synthetic fixture only; no actual competitor observation has occurred.' })),
+    scores: { visual: 14, video: 14, interactive: 19, solo: 14,
+      rigor: 14, uxAccessibility: 9, feedback: 9 },
+    rubricNotes: Object.fromEntries(['visual', 'video', 'interactive', 'solo',
+      'rigor', 'uxAccessibility', 'feedback'].map(category =>
+      [category, 'Synthetic test rationale only; not an actual quality assessment.'])),
+    gaps: [], remediation: [],
+    overallNotes: 'Synthetic fixture only; no real lesson was reviewed or approved.',
+    hardGates: Object.fromEntries(['soloAsynchronous', 'noPeerDependency',
+      'deviceInternetOnly', 'printEquivalents', 'studentOnlyPublic']
+      .map(gate => [gate, { status: 'passed',
+        notes: 'Synthetic fixture declaration only; not verified for real students.' }])),
+    qaGates: Object.fromEntries(['content', 'pedagogy', 'technical', 'experience']
+      .map(gate => [gate, 'passed'])),
+    printEquivalents: Object.fromEntries(['lesson', 'unit', 'course']
+      .map(scope => [scope, 'lessons/demo/print/' + scope + '.html']))
+  };
+  const benchmarkPath = 'evidence/demo/benchmark.json';
+  const benchmarkBytes = JSON.stringify(benchmark);
+  write(benchmarkPath, benchmarkBytes);
+  lesson.benchmark = { path: benchmarkPath, sha256: hash(benchmarkBytes) };
   const catalog = { schemaVersion: '1.0.0', generatedAt: null, lessons: [lesson] };
   const save = () => write('catalog/approved.json', JSON.stringify(catalog));
   save();
@@ -130,8 +167,8 @@ function repinFixtureHtml(f) {
   const bytes = fs.readFileSync(path.join(f.root, f.lesson.entry));
   f.lesson.sha256 = hash(bytes);
   f.lesson.packageSha256 = hash(JSON.stringify([
-    { path: f.lesson.entry, sha256: f.lesson.sha256 }
-  ]));
+    { path: f.lesson.entry, sha256: f.lesson.sha256 }, ...f.lesson.assets
+  ].sort((a, b) => a.path.localeCompare(b.path, 'en'))));
   for (const gate of Object.keys(REQUIRED_CHECKS)) {
     const reportPath = 'evidence/demo/' + gate + '/report.json';
     const report = JSON.parse(fs.readFileSync(path.join(f.root, reportPath), 'utf8'));
@@ -139,6 +176,13 @@ function repinFixtureHtml(f) {
     report.packageSha256 = f.lesson.packageSha256;
     f.write(reportPath, JSON.stringify(report));
   }
+  const benchmarkPath = f.lesson.benchmark.path;
+  const benchmark = JSON.parse(fs.readFileSync(path.join(f.root, benchmarkPath), 'utf8'));
+  benchmark.entrySha256 = f.lesson.sha256;
+  benchmark.packageSha256 = f.lesson.packageSha256;
+  const bytes = JSON.stringify(benchmark);
+  f.write(benchmarkPath, bytes);
+  f.lesson.benchmark.sha256 = hash(bytes);
   f.save();
 }
 test('catalog rejects remote HTML links even if all hashes and reports are updated', () => withFixture(f => {
@@ -305,4 +349,75 @@ test('rejects duplicate evidence artifact references', () => withFixture(f => {
   report.artifacts.push({ ...report.artifacts[0] });
   f.write(reportPath, JSON.stringify(report));
   assert.throws(() => validateCatalog(f.root), /Duplicate evidence artifact/);
+}));
+
+function changeBenchmark(f, mutate) {
+  const p = f.lesson.benchmark.path;
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, p), 'utf8'));
+  mutate(report);
+  const bytes = JSON.stringify(report);
+  f.write(p, bytes);
+  f.lesson.benchmark.sha256 = hash(bytes);
+  f.save();
+}
+test('benchmark is required for every approved lesson', () => withFixture(f => {
+  delete f.lesson.benchmark; f.save();
+  assert.throws(() => validateCatalog(f.root), /Invalid benchmark fields/);
+}));
+test('benchmark rejects scores below 90', () => withFixture(f => {
+  changeBenchmark(f, r => { r.scores.visual = 11; r.scores.video = 11; });
+  assert.throws(() => validateCatalog(f.root), /Benchmark score below 90/);
+}));
+test('benchmark rejects weak critical category even with high total', () => withFixture(f => {
+  changeBenchmark(f, r => { r.scores.interactive = 13; });
+  assert.throws(() => validateCatalog(f.root), /Benchmark weak\/invalid category/);
+}));
+test('benchmark rejects content version mismatch', () => withFixture(f => {
+  changeBenchmark(f, r => { r.contentVersion = 'unreviewed-new-version'; });
+  assert.throws(() => validateCatalog(f.root), /Benchmark content version\/hash mismatch/);
+}));
+test('benchmark rejects unverified approval', () => withFixture(f => {
+  changeBenchmark(f, r => { r.approval = 'pending'; });
+  assert.throws(() => validateCatalog(f.root), /human signoff/);
+}));
+test('benchmark rejects fabricated superiority claim', () => withFixture(f => {
+  changeBenchmark(f, r => { r.superiorityClaim = 'better_than_subject'; });
+  assert.throws(() => validateCatalog(f.root), /superiority claim/);
+}));
+test('benchmark rejects missing competitor reference', () => withFixture(f => {
+  changeBenchmark(f, r => { r.comparisons = r.comparisons.filter(x => x.provider !== 'subject.com'); });
+  assert.throws(() => validateCatalog(f.root), /missing competitor comparison/);
+}));
+test('benchmark rejects marketing claim posing as dated observation', () => withFixture(f => {
+  changeBenchmark(f, r => {
+    r.comparisons[0].evidenceType = 'direct_observation';
+    r.comparisons[0].referenceUrl = 'http://untrusted.invalid/claim';
+  });
+  assert.throws(() => validateCatalog(f.root), /Missing dated HTTPS comparison source/);
+}));
+test('benchmark rejects failed device-only hard gate', () => withFixture(f => {
+  changeBenchmark(f, r => { r.hardGates.deviceInternetOnly.status = 'unknown'; });
+  assert.throws(() => validateCatalog(f.root), /Benchmark hard gate not verified/);
+}));
+test('benchmark rejects four-pass QA mismatch', () => withFixture(f => {
+  changeBenchmark(f, r => { r.qaGates.technical = 'pending'; });
+  assert.throws(() => validateCatalog(f.root), /Benchmark four-pass QA mismatch/);
+}));
+test('benchmark rejects missing print-equivalent asset', () => withFixture(f => {
+  changeBenchmark(f, r => { r.printEquivalents.course = 'lessons/demo/print/missing.html'; });
+  assert.throws(() => validateCatalog(f.root), /Missing approved print-equivalent asset/);
+}));
+test('benchmark rejects required peer work', () => withFixture(f => {
+  f.write(f.lesson.entry, '<!doctype html><main>Work with a partner to finish.</main>');
+  repinFixtureHtml(f);
+  assert.throws(() => validateCatalog(f.root), /Potential required peer dependency/);
+}));
+test('benchmark rejects required supplies', () => withFixture(f => {
+  f.write(f.lesson.entry, '<!doctype html><main>Buy scissors to complete this lesson.</main>');
+  repinFixtureHtml(f);
+  assert.throws(() => validateCatalog(f.root), /Potential required physical material/);
+}));
+test('benchmark hash tampering is rejected', () => withFixture(f => {
+  f.write(f.lesson.benchmark.path, '{"fake":"record"}');
+  assert.throws(() => validateCatalog(f.root), /Benchmark SHA-256 mismatch/);
 }));

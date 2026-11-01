@@ -2,14 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { auditPublicPackage } from './audit-public-package.mjs';
+import { validateBenchmark } from './validate-benchmark.mjs';
 import { fileURLToPath } from 'node:url';
 
 const DEFAULT_ROOT = fileURLToPath(new URL('../', import.meta.url));
 export const REQUIRED_CHECKS = Object.freeze({
   content: ['standards', 'accuracy', 'copyright'],
-  pedagogy: ['student_agency', 'scaffolding', 'feedback'],
-  technical: ['iphone', 'ipad', 'video', 'captions', 'keyboard', 'screen_reader', 'persistence'],
-  experience: ['student_flow', 'teacher_review', 'demo']
+  pedagogy: ['student_agency', 'scaffolding', 'feedback', 'solo_async', 'device_internet_only', 'no_peer_wait'],
+  technical: ['iphone', 'ipad', 'video', 'captions', 'keyboard', 'screen_reader', 'persistence', 'print_equivalents'],
+  experience: ['student_flow', 'teacher_review', 'demo', 'independent_completion']
 });
 
 function requireThat(ok, message) {
@@ -78,7 +79,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
   const publicFiles = new Set();
   for (const lesson of catalog.lessons) {
     allowOnlyKeys(lesson, ['id', 'title', 'grade', 'subject', 'course', 'unit',
-      'version', 'entry', 'sha256', 'assets', 'packageSha256', 'rights', 'qa'], 'lesson');
+      'version', 'entry', 'sha256', 'assets', 'packageSha256', 'rights', 'qa', 'benchmark'], 'lesson');
     requireThat(isObject(lesson) && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(lesson.id || ''),
       'Invalid lesson ID');
     requireThat(!ids.has(lesson.id), 'Duplicate lesson ID: ' + lesson.id);
@@ -183,6 +184,9 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         requireThat(checks.has(check), 'Required QA check missing: ' + lesson.id + '/' + gate + '/' + check);
       }
     }
+    const benchmark = validateBenchmark(root, lesson);
+    referencedEvidenceFiles.add(benchmark.path);
+    publicFiles.add(benchmark.path);
   }
   // Fail closed if any unapproved lesson or unreferenced evidence reaches the public tree.
   // A valid empty catalog must not silently publish orphaned private draft files.

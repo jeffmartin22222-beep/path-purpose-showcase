@@ -99,7 +99,8 @@
         "rights",
         "qa",
         "assets",
-        "packageSha256"
+        "packageSha256",
+        "benchmark"
       ],
       "properties": {
         "id": {
@@ -217,6 +218,23 @@
         },
         "packageSha256": {
           "$ref": "#/$defs/sha"
+        },
+        "benchmark": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^evidence/[a-z0-9-]+/benchmark\\.json$"
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha"
+            }
+          }
         }
       },
       "additionalProperties": false

@@ -33,6 +33,8 @@ jobs:
         run: node --check scripts/private-handoff-ledger.mjs
       - name: Check explicit private ledger bootstrap syntax
         run: node --check scripts/init-private-handoff-ledger.mjs
+      - name: Check competitive benchmark validator syntax
+        run: node --check scripts/validate-benchmark.mjs
       - name: Run QA gate negative and positive tests
         run: node --test tests/*.test.mjs
       - name: Verify approved catalog and evidence integrity

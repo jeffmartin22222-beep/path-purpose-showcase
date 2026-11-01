@@ -27,7 +27,7 @@ function importPackage() {
   const current = JSON.parse(fs.readFileSync(path.join(root, 'catalog/approved.json'), 'utf8'));
   validateCatalog(root);
   requireThat(!current.lessons.some(x => x.id === lesson.id), 'Lesson already exists; updates require a separate review PR');
-  const paths = new Set([lesson.entry, ...lesson.assets.map(a => a.path)]);
+  const paths = new Set([lesson.entry, ...lesson.assets.map(a => a.path), lesson.benchmark.path]);
   for (const gate of Object.values(lesson.qa)) {
     for (const reportPath of gate.evidence) {
       paths.add(reportPath);
