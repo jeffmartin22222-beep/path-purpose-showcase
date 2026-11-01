@@ -465,3 +465,21 @@ test('benchmark cannot approve comparison checked after signoff', () => withFixt
   changeBenchmark(f, r => { r.comparisons[0].checkedAt = '2026-11-01T12:00:00Z'; });
   assert.throws(() => validateCatalog(f.root), /Comparison checked after benchmark signoff/);
 }));
+
+test('rejects physical iPad evidence dated after technical QA approval', () => withFixture(f => {
+  const p = 'evidence/demo/technical/report.json';
+  const report = JSON.parse(fs.readFileSync(path.join(f.root, p), 'utf8'));
+  report.checks.find(x => x.id === 'ipad').testedAt = '2026-11-01T12:00:00Z';
+  f.write(p, JSON.stringify(report));
+  assert.throws(() => validateCatalog(f.root), /Physical device test occurred after QA signoff/);
+}));
+test('rejects future-dated rights and QA signoffs', () => {
+  withFixture(f => {
+    f.lesson.rights.reviewedAt = '2099-01-01T12:00:00Z'; f.save();
+    assert.throws(() => validateCatalog(f.root), /Future-dated rights or QA approval/);
+  });
+  withFixture(f => {
+    f.lesson.qa.content.reviewedAt = '2099-01-01T12:00:00Z'; f.save();
+    assert.throws(() => validateCatalog(f.root), /Future-dated rights or QA approval/);
+  });
+});
