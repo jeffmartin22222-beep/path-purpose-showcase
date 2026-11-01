@@ -450,6 +450,43 @@ test('benchmark rejects required supplies', () => withFixture(f => {
   repinFixtureHtml(f);
   assert.throws(() => validateCatalog(f.root), /Potential required physical material/);
 }));
+
+test('benchmark blocks common asynchronous peer and adult dependencies', () => {
+  for (const instruction of [
+    'Reply to two classmates before moving on.',
+    "Wait for your teacher's grade before proceeding.",
+    'Attend a live class tomorrow.',
+    'Ask a parent to help you finish.',
+    'Join a group to complete the project.'
+  ]) withFixture(f => {
+    f.write(f.lesson.entry, '<!doctype html><main>' + instruction + '</main>');
+    repinFixtureHtml(f);
+    assert.throws(() => validateCatalog(f.root), /Potential required peer dependency/);
+  });
+});
+test('benchmark blocks mandatory supplies, printing, and outdoor travel', () => {
+  for (const instruction of [
+    'You must use a pencil to complete this.',
+    'Use a notebook for your answers.',
+    'You need to print this worksheet.',
+    'Print out the worksheet.',
+    'Go outside to observe plants.',
+    'Required supplies: scissors'
+  ]) withFixture(f => {
+    f.write(f.lesson.entry, '<!doctype html><main>' + instruction + '</main>');
+    repinFixtureHtml(f);
+    assert.throws(() => validateCatalog(f.root), /Potential required physical material/);
+  });
+});
+test('benchmark allows independent digital work and genuinely optional supplies', () => withFixture(f => {
+  f.write(f.lesson.entry, '<!doctype html><main>' +
+    'Work independently using the digital simulation. No printer, paper, or supplies are required. ' +
+    'You can optionally sketch with a pencil, but the digital canvas is equivalent. ' +
+    'Your teacher may review work asynchronously; continue now.</main>');
+  repinFixtureHtml(f);
+  assert.equal(validateCatalog(f.root).approvedLessons, 1);
+}));
+
 test('benchmark hash tampering is rejected', () => withFixture(f => {
   f.write(f.lesson.benchmark.path, '{"fake":"record"}');
   assert.throws(() => validateCatalog(f.root), /Benchmark SHA-256 mismatch/);
