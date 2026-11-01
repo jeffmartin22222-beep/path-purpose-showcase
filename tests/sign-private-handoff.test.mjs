@@ -115,8 +115,9 @@ test('synthetic reviewed-package fixture signs to a detached private record, ref
   }));
   const privateKey = crypto.generateKeyPairSync('ed25519').privateKey;
   fs.writeFileSync(keyPath, privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
+  const signedAt = new Date();
   const signed = signReviewedBundle(bundle, keyPath, 'private:synthetic-fixture-v1',
-    f.recordPath, new Date('2026-11-01T12:00:00Z'));
+    f.recordPath, signedAt);
   assert.equal(signed.lessonId, 'demo');
   assert.equal((fs.statSync(f.recordPath).mode & 0o077), 0);
   const publicKey = path.join(f.dir, 'derived-public.pem');
@@ -124,7 +125,32 @@ test('synthetic reviewed-package fixture signs to a detached private record, ref
   assert.equal(verifySignedHandoff(f.recordPath, publicKey, {
     repository: repo, lessonId: 'demo', lessonVersion: '1',
     bundleSha256: signed.bundleSha256
-  }, new Date('2026-11-01T12:30:00Z')).sourceArtifactId, 'private:synthetic-fixture-v1');
+  }, new Date(signedAt.getTime() + 30 * 60_000)).sourceArtifactId, 'private:synthetic-fixture-v1');
+
+  const stageScript = fileURLToPath(new URL('../scripts/stage-reviewed-package.mjs', import.meta.url));
+  const digestFlag = '--expected-bundle-sha256=' + signed.bundleSha256;
+  const recordFlag = '--signed-handoff-record=' + f.recordPath;
+  const keyFlag = '--trusted-producer-public-key=' + publicKey;
+  const preflight = (...flags) => spawnSync(process.execPath,
+    [stageScript, bundle, ...flags], { encoding: 'utf8', env: { ...process.env, GH_TOKEN: '' } });
+  const verified = preflight(digestFlag, recordFlag, keyFlag);
+  assert.equal(verified.status, 0, verified.stderr);
+  assert.match(verified.stdout, /Signed producer handoff verified/);
+  assert.match(verified.stdout, /No GitHub calls, commits, or file copies/);
+  const missingKey = preflight(digestFlag, recordFlag);
+  assert.notEqual(missingKey.status, 0);
+  assert.match(missingKey.stderr, /requires trusted digest, detached record and trusted public key/);
+  const incorrectDigest = preflight('--expected-bundle-sha256=' + 'b'.repeat(64),
+    recordFlag, keyFlag);
+  assert.notEqual(incorrectDigest.status, 0);
+  assert.match(incorrectDigest.stderr, /fingerprint mismatch/);
+  const wrongKey = path.join(f.dir, 'untrusted-public.pem');
+  fs.writeFileSync(wrongKey, crypto.generateKeyPairSync('ed25519').publicKey
+    .export({ type: 'spki', format: 'pem' }));
+  const untrusted = preflight(digestFlag, recordFlag,
+    '--trusted-producer-public-key=' + wrongKey);
+  assert.notEqual(untrusted.status, 0);
+  assert.match(untrusted.stderr, /Invalid signed producer handoff signature/);
   assert.throws(() => signReviewedBundle(bundle, keyPath, 'private:synthetic-fixture-v1',
-    f.recordPath, new Date('2026-11-01T12:00:00Z')), /EEXIST/);
+    f.recordPath, signedAt), /EEXIST/);
 }));
