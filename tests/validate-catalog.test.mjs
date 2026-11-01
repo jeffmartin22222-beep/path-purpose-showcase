@@ -46,7 +46,9 @@ function fixture() {
       checks: checkIds.map(id => ({
         id, result: 'passed', notes: 'Synthetic fixture',
         ...(['iphone', 'ipad'].includes(id) ? {
-          deviceModel: 'Fixture device', osVersion: 'Fixture OS', testedAt: reviewedAt
+          deviceModel: id === 'iphone' ? 'Test iPhone 16' : 'Test iPad Air',
+          osVersion: id === 'iphone' ? 'iOS 18.0' : 'iPadOS 18.0',
+          browserName: 'Safari', testMethod: 'physical_device', testedAt: reviewedAt
         } : {})
       })),
       artifacts: [{ path: artifactPath, sha256: hash(artifactBytes) }]
@@ -143,6 +145,32 @@ test('rejects missing physical iPad metadata', () => withFixture(f => {
   assert.throws(() => validateCatalog(f.root), /Physical device test metadata required/);
 }));
 
+test('rejects emulation or unspecified physical Safari evidence', () => {
+  for (const mutation of [
+    check => { delete check.testMethod; },
+    check => { check.testMethod = 'emulated'; },
+    check => { check.browserName = 'Chromium'; }
+  ]) withFixture(f => {
+    const p = 'evidence/demo/technical/report.json';
+    const report = JSON.parse(fs.readFileSync(path.join(f.root, p), 'utf8'));
+    mutation(report.checks.find(x => x.id === 'ipad'));
+    f.write(p, JSON.stringify(report));
+    assert.throws(() => validateCatalog(f.root), /Physical Safari device evidence required/);
+  });
+});
+test('rejects simulator labels and mismatched iOS device evidence', () => {
+  for (const mutation of [
+    check => { check.deviceModel = 'Chromium iPad emulator'; },
+    check => { check.deviceModel = 'Test iPhone 16'; },
+    check => { check.osVersion = 'Windows 11'; }
+  ]) withFixture(f => {
+    const p = 'evidence/demo/technical/report.json';
+    const report = JSON.parse(fs.readFileSync(path.join(f.root, p), 'utf8'));
+    mutation(report.checks.find(x => x.id === 'ipad'));
+    f.write(p, JSON.stringify(report));
+    assert.throws(() => validateCatalog(f.root), /Physical iOS device metadata mismatch/);
+  });
+});
 test('rejects unlisted lesson assets', () => withFixture(f => {
   f.write('lessons/demo/unreviewed-video.mp4', 'Unreviewed asset');
   assert.throws(() => validateCatalog(f.root), /unlisted files/);

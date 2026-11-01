@@ -38,3 +38,12 @@ The benchmark validator now rejects non-public placeholder competitor references
 ### Device evidence ordering (2026-11-01)
 
 Public rights and four-pass QA signoff timestamps must not be in the future (five-minute clock-skew tolerance). Physical iPhone/iPad `testedAt` must be valid UTC and no later than the technical QA review signoff. This blocks a record claiming the reviewer approved an iOS test before it occurred, but does not authenticate the device, tester, screenshot, or result. Independent physical-device evidence remains a release blocker.
+
+
+### Physical-device evidence lint (2026-11-01)
+Technical `iphone` and `ipad` QA checks now require explicit
+`physical_device` + Safari attestations, correct iPhone/iPad model family,
+a numeric iOS/iPadOS version, and dated testing before signoff. Emulator and
+Chromium labels fail closed. This blocks common accidental substitution of
+browser emulation for physical testing; it does **not** prove that claimed
+device testing actually occurred. Independent human verification remains mandatory.

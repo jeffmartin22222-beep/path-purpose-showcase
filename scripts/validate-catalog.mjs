@@ -154,7 +154,7 @@ export function validateCatalog(root = DEFAULT_ROOT) {
         requireThat(Array.isArray(report.checks), 'Missing checks: ' + evidencePath);
         for (const check of report.checks) {
           allowOnlyKeys(check, ['id', 'result', 'notes', 'deviceModel',
-            'osVersion', 'testedAt'], evidencePath + ' check');
+            'osVersion', 'testedAt', 'testMethod', 'browserName'], evidencePath + ' check');
           requireThat(isObject(check) && nonempty(check.id) &&
             check.result === 'passed' && nonempty(check.notes),
             'Unverified check: ' + evidencePath);
@@ -166,6 +166,18 @@ export function validateCatalog(root = DEFAULT_ROOT) {
               timestamp(check.testedAt), 'Physical device test metadata required: ' + check.id);
             requireThat(Date.parse(check.testedAt) <= Date.parse(approval.reviewedAt),
               'Physical device test occurred after QA signoff: ' + check.id);
+            // Browser emulation cannot satisfy a required physical Safari QA check.
+            // These are structural attestations, NOT independent proof of testing.
+            requireThat(check.testMethod === 'physical_device' &&
+              check.browserName === 'Safari',
+              'Physical Safari device evidence required: ' + check.id);
+            const model = check.deviceModel;
+            const expectedModel = check.id === 'iphone' ? /\biPhone\b/i : /\biPad\b/i;
+            requireThat(expectedModel.test(model) &&
+              /\b(?:iOS|iPadOS)\s+\d{1,2}(?:\.\d+){0,2}\b/i.test(check.osVersion) &&
+              !/\b(?:emulat(?:or|ed|ion)|simulat(?:or|ed|ion)|chromium|playwright)\b/i.test(
+                model + ' ' + check.osVersion),
+              'Physical iOS device metadata mismatch: ' + check.id);
           }
         }
         requireThat(Array.isArray(report.artifacts) && report.artifacts.length > 0,

@@ -34,3 +34,16 @@ Check actual learning objective and standard mapping, accuracy, feedback quality
 5. Only after a staging re-test and explicit owner approval may the release PR be merged and the live URL verified.
 
 This protocol documents acceptance criteria only. It is not evidence that any physical-device review has occurred.
+
+
+### Physical Safari evidence contract (2026-11-01)
+For the technical QA report's `iphone` and `ipad` checks, provide
+`testMethod: "physical_device"`, `browserName: "Safari"`, an actual
+`deviceModel` identifying the correct device family, `osVersion` in
+`iOS 18.0` or `iPadOS 18.0` form (use the version actually tested), and
+UTC `testedAt` no later than technical signoff. Emulator/Chromium/Playwright
+labels and missing/mismatched metadata fail catalog validation. Record
+independently reviewable redacted screenshots and actual test steps separately.
+These strings are **self-reported** and do not authenticate a physical device,
+tester, OS, browser, screenshot, or accessibility result. CI Chromium remains
+precautionary browser coverage, not physical Safari evidence.
