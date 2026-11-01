@@ -104,11 +104,30 @@ try {
       });
       try {
         const external = [];
+        const unexpectedLocal = [];
+        // Approved lessons must be self-contained: every same-origin request
+        // must resolve to an explicitly hashed file in this lesson's manifest.
+        // Without this, an approved page could silently load unreviewed files
+        // elsewhere in the public repository, bypassing catalog integrity QA.
+        const approvedPaths = new Set([
+          lesson.entry, ...(lesson.assets || []).map(asset => asset.path)
+        ].map(relative => '/' + relative));
+        const expectedOrigin = new URL(base).origin;
         await lessonContext.route('**/*', route => {
           const url = route.request().url();
-          if (/^https?:/.test(url) && new URL(url).origin !== new URL(base).origin) {
-            external.push(url);
-            return route.abort();
+          if (/^https?:/i.test(url)) {
+            const requestUrl = new URL(url);
+            if (requestUrl.origin !== expectedOrigin) {
+              external.push(url);
+              return route.abort();
+            }
+            let pathname;
+            try { pathname = decodeURIComponent(requestUrl.pathname); }
+            catch { pathname = requestUrl.pathname; }
+            if (!approvedPaths.has(pathname)) {
+              unexpectedLocal.push(pathname);
+              return route.abort();
+            }
           }
           return route.continue();
         });
@@ -135,6 +154,7 @@ try {
         assert.ok(snapshot.scrollWidth <= snapshot.clientWidth + 1,
           lesson.id + ' horizontal overflow on ' + device.name + ': ' + JSON.stringify(snapshot));
         assert.deepEqual(external, [], lesson.id + ' depends on external network resources');
+        assert.deepEqual(unexpectedLocal, [], lesson.id + ' requested unlisted same-origin assets');
         assert.deepEqual(failedLocal, [], lesson.id + ' has missing local assets');
         assert.deepEqual(lessonErrors, [], lesson.id + ' has uncaught browser errors');
       } finally {
