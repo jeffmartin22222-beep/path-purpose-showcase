@@ -100,11 +100,11 @@ const REMOTE_SCRIPT_LITERAL = /\bhttps?:\/\/[a-z0-9]/i;
 // literals just as we inspect standalone .js/.mjs files. This is conservative
 // static lint, not a JavaScript parser or a runtime network sandbox.
 function hasDeferredRemoteHtmlCode(html) {
-  const scripts = html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script\\s*>/gi);
+  const scripts = html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi);
   for (const match of scripts) {
     if (REMOTE_SCRIPT_LITERAL.test(match[1])) return true;
   }
-  const handlers = html.matchAll(/\\bon[a-z]+\\s*=\\s*(?:"([^"]*)"|'([^']*)')/gi);
+  const handlers = html.matchAll(/\bon[a-z]+\s*=\s*(?:"([^"]*)"|'([^']*)')/gi);
   for (const match of handlers) {
     if (REMOTE_SCRIPT_LITERAL.test(match[1] ?? match[2])) return true;
   }
