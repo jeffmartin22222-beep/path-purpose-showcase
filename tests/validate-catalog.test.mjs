@@ -180,9 +180,9 @@ function repinFixtureHtml(f) {
   const benchmark = JSON.parse(fs.readFileSync(path.join(f.root, benchmarkPath), 'utf8'));
   benchmark.entrySha256 = f.lesson.sha256;
   benchmark.packageSha256 = f.lesson.packageSha256;
-  const bytes = JSON.stringify(benchmark);
-  f.write(benchmarkPath, bytes);
-  f.lesson.benchmark.sha256 = hash(bytes);
+  const benchmarkBytes = JSON.stringify(benchmark);
+  f.write(benchmarkPath, benchmarkBytes);
+  f.lesson.benchmark.sha256 = hash(benchmarkBytes);
   f.save();
 }
 test('catalog rejects remote HTML links even if all hashes and reports are updated', () => withFixture(f => {

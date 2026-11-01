@@ -78,8 +78,19 @@ test('synthetic reviewed-package fixture signs to a detached private record, ref
   const html = '<!doctype html><html><title>Fixture</title><body>Synthetic fixture</body></html>';
   const entry = 'lessons/demo/index.html';
   const htmlHash = hash(html);
-  const packageHash = hash(JSON.stringify([{ path: entry, sha256: htmlHash }]));
   write(entry, html);
+  const assets = ['lesson', 'unit', 'course'].map(scope => {
+    const relative = 'lessons/demo/print/' + scope + '.html';
+    const printable = '<!doctype html><html><body><main data-print-scope="' + scope +
+      '"><h1>Synthetic ' + scope + ' print representation</h1><p>' +
+      'This is synthetic test-only print material, not a real approved workbook or verified PDF.' +
+      '</p></main></body></html>';
+    write(relative, printable);
+    return { path: relative, sha256: hash(printable) };
+  });
+  const packageHash = hash(JSON.stringify([
+    { path: entry, sha256: htmlHash }, ...assets
+  ].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)));
   const reviewedAt = '2026-11-01T00:00:00Z';
   const qa = {};
   for (const [gate, checks] of Object.entries(REQUIRED_CHECKS)) {
@@ -103,11 +114,39 @@ test('synthetic reviewed-package fixture signs to a detached private record, ref
     qa[gate] = { status: 'passed', reviewedBy: 'Synthetic fixture only',
       reviewedAt, evidence: [reportPath] };
   }
+  const benchmark = {
+    schemaVersion: '1.0.0', lessonId: 'demo', contentVersion: '1',
+    entrySha256: htmlHash, packageSha256: packageHash,
+    reviewedBy: 'Synthetic fixture reviewer', reviewedAt,
+    approval: 'approved', superiorityClaim: 'not_claimed',
+    comparisons: ['subject.com', 'schoolsplp-lincoln', 'edmentum', 'edgenuity']
+      .map(provider => ({ provider, evidenceType: 'unavailable',
+        notes: 'Synthetic fixture only; no competitor has been actually reviewed.' })),
+    scores: { visual: 14, video: 14, interactive: 19, solo: 14,
+      rigor: 14, uxAccessibility: 9, feedback: 9 },
+    rubricNotes: Object.fromEntries(['visual', 'video', 'interactive', 'solo',
+      'rigor', 'uxAccessibility', 'feedback'].map(category =>
+      [category, 'Synthetic rationale for testing only; no actual evaluation occurred.'])),
+    gaps: [], remediation: [],
+    overallNotes: 'Synthetic fixture only; no actual curriculum approval occurred.',
+    hardGates: Object.fromEntries(['soloAsynchronous', 'noPeerDependency',
+      'deviceInternetOnly', 'printEquivalents', 'studentOnlyPublic']
+      .map(gate => [gate, { status: 'passed',
+        notes: 'Synthetic fixture only; not a real verified student journey.' }])),
+    qaGates: Object.fromEntries(['content', 'pedagogy', 'technical', 'experience']
+      .map(gate => [gate, 'passed'])),
+    printEquivalents: Object.fromEntries(['lesson', 'unit', 'course']
+      .map(scope => [scope, 'lessons/demo/print/' + scope + '.html']))
+  };
+  const benchmarkPath = 'evidence/demo/benchmark.json';
+  const benchmarkBytes = JSON.stringify(benchmark);
+  write(benchmarkPath, benchmarkBytes);
   write('catalog/approved.json', JSON.stringify({
     schemaVersion: '1.0.0', generatedAt: null, lessons: [{
       id: 'demo', title: 'Synthetic fixture only', grade: '8', subject: 'Science',
       course: 'Biology', unit: 'Synthetic', version: '1', entry,
-      sha256: htmlHash, assets: [], packageSha256: packageHash,
+      sha256: htmlHash, assets, packageSha256: packageHash,
+      benchmark: { path: benchmarkPath, sha256: hash(benchmarkBytes) },
       rights: { status: 'cleared', basis: 'original', notes: 'Synthetic test only',
         reviewedBy: 'Synthetic fixture only', reviewedAt },
       qa
