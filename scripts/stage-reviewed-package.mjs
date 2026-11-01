@@ -60,6 +60,12 @@ function main() {
   const lesson = JSON.parse(fs.readFileSync(path.join(source, 'catalog/approved.json'), 'utf8')).lessons[0];
   const reviewBranch = 'feature/review-' + lesson.id + '-' + lesson.packageSha256.slice(0, 12);
 
+  // Preserve credential-first refusal for apply; offline preflight never needs a token.
+  if (apply) {
+  requireThat(process.env.GH_TOKEN && process.env.GH_TOKEN.trim(),
+    'GH_TOKEN required in private runner environment; never place it in this repository');
+  }
+
   // Offline preflight can now verify the complete producer signature and digest
   // without a GitHub token, private ledger, branch write or public file copy.
   // Do not describe an unsigned dry run as a verified producer handoff.
@@ -99,8 +105,6 @@ function main() {
   // A digest computed from the same untrusted bundle is not authentication.
   // The caller must independently verify the expected digest against an
   // immutable producer record before passing --expected-bundle-sha256.
-  requireThat(process.env.GH_TOKEN && process.env.GH_TOKEN.trim(),
-    'GH_TOKEN required in private runner environment; never place it in this repository');
   const remote = command('git', ['remote', 'get-url', 'origin']);
   requireThat([
     'https://github.com/' + repo + '.git',
