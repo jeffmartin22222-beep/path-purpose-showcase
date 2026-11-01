@@ -47,7 +47,7 @@ This example is incomplete and will fail validation, as intended.
 
 ## Public artifact security lint and draft PR staging
 
-The validator now runs a conservative public package audit that rejects common secret tokens, teacher-only answer keys/roster filenames, and external resource/link references in lesson HTML and CSS. This is defense-in-depth, not a guarantee of privacy, original rights or safe media. See [public package security](docs/public-package-security.md). The optional trusted-runner staging script `scripts/stage-reviewed-package.mjs` can create a **draft review PR** from an explicitly reviewed private bundle when an authorized runner has `GH_TOKEN` and git push credentials. It cannot obtain source artifacts or authenticate on its own; no automatic connection exists. See [production handoff](docs/production-handoff.md).
+The validator now runs a conservative public package audit that rejects common secret tokens, teacher-only answer keys/roster filenames, and external resource/link references in lesson HTML and CSS. This is defense-in-depth, not a guarantee of privacy, original rights or safe media. See [public package security](docs/public-package-security.md). The optional trusted-runner staging script `scripts/stage-reviewed-package.mjs` can create a **draft review PR** from an explicitly reviewed private bundle only when an authorized private runner has `GH_TOKEN`, git push credentials, an independently signed Ed25519 producer record, a separately trusted public key and a matching bundle fingerprint. This verifies source provenance but not review truth. It cannot obtain source artifacts or authenticate on its own; no automatic connection exists. See [production handoff](docs/production-handoff.md).
 
 ## Running the checks
 
