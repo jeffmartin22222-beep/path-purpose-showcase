@@ -21,6 +21,8 @@ jobs:
         run: node --check scripts/import-approved-package.mjs
       - name: Check reviewed-package staging tool syntax
         run: node --check scripts/stage-reviewed-package.mjs
+      - name: Check private bundle fingerprint tool syntax
+        run: node --check scripts/fingerprint-reviewed-bundle.mjs
       - name: Run QA gate negative and positive tests
         run: node --test tests/*.test.mjs
       - name: Verify approved catalog and evidence integrity
