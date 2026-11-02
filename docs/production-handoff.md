@@ -218,3 +218,21 @@ human review. A maliciously relabeled fake report can still evade keyword
 checks; trusted reviewer identity, provenance, rights checks, physical iOS
 verification, private transport and owner authorization remain mandatory.
 No production producer connection is implied.
+
+### Nested review evidence and symlink guard — 2026-11-02
+
+The explicit synthetic-evidence guard now recursively inspects textual fields in rights
+attestations, four-pass QA approvals/reports, benchmark gaps/remediation, comparator
+notes and other benchmark review metadata. Previously, synthetic approval markers
+in nested review fields (such as benchmark gaps or device tester comments) could
+escape the narrow list of checked properties. Referenced text evidence is read
+only through package-contained non-symlink paths, with a 10 MiB per-file bound.
+Student lesson content is intentionally not keyword-scanned.
+
+Five new negative regression tests cover nested benchmark notes, nested device
+metadata, QA approval metadata, symlinked evidence files and symlinked ancestors.
+These tests are **synthetic safety tests**, not real lesson QA. A dishonest
+reviewer can still remove explicit markers or fabricate attestations. Physical
+Safari, independent rights/standards reviews, genuine competitor observations,
+authenticated private producer transport and owner authorization remain P0
+release blockers. No automatic publication is authorized.
