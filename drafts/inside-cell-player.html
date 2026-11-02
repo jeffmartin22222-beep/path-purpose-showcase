@@ -68,13 +68,13 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <p>The model illustrates event order. It does not simulate real membrane proteins or rates.</p>
 <div class="checkpoint" role="group" aria-labelledby="evidenceQuestion">
 <h2 id="evidenceQuestion">Which observation is evidence that fusion is needed for cargo release?</h2>
-<p class="muted small">Choose the observation supported by your two trials. You can change your answer after reading the feedback.</p>
+<p class="muted small">Choose the observation supported by your two trials. If your first choice is not supported, use the feedback to revise it before continuing.</p>
 <div class="actions" id="evidenceChoices">
 <button class="secondary" data-evidence="blocked" aria-pressed="false">Cargo stayed inside when fusion was blocked, but exited after a pore opened.</button>
 <button class="secondary" data-evidence="approach" aria-pressed="false">Cargo exited as soon as the vesicle approached the membrane.</button>
 <button class="secondary" data-evidence="both" aria-pressed="false">Cargo exited in both trials, even without an open pore.</button>
 </div>
-<p id="evidenceFeedback" role="status" aria-live="polite">Select an observation to see feedback and continue.</p>
+<p id="evidenceFeedback" role="status" aria-live="polite">Select the supported observation to see feedback and continue.</p>
 </div>
 <button id="retry" class="secondary">Try the experiment again</button></div>
 </section>
@@ -125,18 +125,18 @@ function paintEvidence(){
  });
  $('evidenceFeedback').textContent=evidenceChoice
   ?evidenceResponses[evidenceChoice]
-  :'Select an observation to see feedback and continue.';
+  :'Select the supported observation to see feedback and continue.';
 }
 function paint(){
  paintEvidence();
  document.querySelectorAll('[data-page]').forEach(s=>s.hidden=Number(s.dataset.page)!==page);
  $('progress').textContent=['Teach','Do','Feedback','Next'][page]+' · '+(page+1)+' of 4';
  $('back').disabled=page===0;$('next').hidden=page===3;
- $('next').disabled=(page===1&&(stage!==3||!blockedObserved))||(page===2&&!evidenceChoice);
+ $('next').disabled=(page===1&&(stage!==3||!blockedObserved))||(page===2&&evidenceChoice!=='blocked');
  if(page!==0)$('video').pause();$('main').scrollTop=0;save();
 }
 function go(n){page=n;paint()}
-$('next').onclick=()=>{if(page<3&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||evidenceChoice))go(page+1)};
+$('next').onclick=()=>{if(page<3&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||evidenceChoice==='blocked'))go(page+1)};
 $('back').onclick=()=>{if(page>0)go(page-1)};
 $('dock').onclick=()=>{if(stage===0){stage=1;paintModel();paint()}};
 $('fusionToggle').onclick=()=>{
