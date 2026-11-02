@@ -22,6 +22,9 @@ function main() {
   if (fs.realpathSync(directory) !== directory || !fs.statSync(directory).isDirectory()) {
     throw new Error('Private replay ledger directory must be a real directory, not a symlink');
   }
+  if (fs.statSync(directory).mode & 0o002) {
+    throw new Error('Private replay ledger directory must not be world-writable');
+  }
   // Exclusive creation is critical: never truncate or replace replay history.
   const fd = fs.openSync(ledgerPath, 'wx', 0o600);
   try {
