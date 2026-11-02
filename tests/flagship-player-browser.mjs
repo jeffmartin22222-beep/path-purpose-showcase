@@ -19,6 +19,14 @@ const server=http.createServer((req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const address='http://127.0.0.1:'+server.address().port+'/drafts/inside-cell-player.html';
+// Producer manifest verification: the MP4 is NOT available to this repository.
+// These checks pin the 32-second local-only integration contract; they do not test decoding.
+const playerSource=fs.readFileSync(path.join(root,'drafts/inside-cell-player.html'),'utf8');
+assert.match(playerSource,/proofHash='60f4e4a4427a0695807d84add4cc9d61c23a8306d9c616c6c15d756e35cb4d76'/);
+assert.match(playerSource,/Math\.abs\(v\.duration-32\)>\.25/);
+assert.match(playerSource,/atSeconds:15/);
+assert.match(playerSource,/atSeconds:23\.5/);
+assert.match(playerSource,/const key='pp-inside-cell-paged-v2-'\+lessonHash\.slice\(0,16\)/);
 let count=0;
 try{
  for(const [engine,launcher] of [['chromium',chromium],['webkit',webkit]]){
@@ -34,6 +42,10 @@ try{
     assert.match(await page.locator('#progress').innerText(),/Teach/);
     assert.equal(await page.locator('[data-page="0"]').isVisible(),true);
     assert.equal(await page.locator('#video').isVisible(),false);
+    assert.match(await page.locator('#proofSequence').innerText(),/32-second proof/);
+    assert.match(await page.locator('#proofSequence').innerText(),/23–32 s/);
+    assert.equal(await page.locator('#video').getAttribute('aria-describedby'),'proofSequence');
+    assert.match(await page.locator('#mediaStatus').innerText(),/Video not attached/);
     assert.equal(await page.locator('#next').isDisabled(),true,'Teach must require a prediction');
     await page.locator('[data-prediction="released"]').click();
     assert.match(await page.locator('#predictionFeedback').innerText(),/Prediction saved/);
@@ -140,5 +152,5 @@ try{
   }finally{await browser.close()}
  }
  console.log('PASS: '+count+' Chromium/WebKit 320px/iPad draft-player scenarios; persistent Teach prediction, evidence-based prediction revision, blocked/permitted fusion comparison, locked progression, reload persistence, wrong-media rejection, evidence explanation, own written reasoning with refresh/restart, keyboard/reload persistence.');
- console.log('NOT TESTED: actual original MP4 decode, physical iOS, VoiceOver, captions, independent four-pass QA.');
+ console.log('NOT TESTED: actual 32-second original MP4 decode/checkpoint playback (asset not transferred), physical iOS, VoiceOver, captions, independent four-pass QA.');
 }finally{await new Promise(resolve=>server.close(resolve))}
