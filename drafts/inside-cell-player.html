@@ -45,7 +45,7 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 </section>
 <section class="step" data-page="1" hidden>
 <div class="eyebrow">Do · 2 of 4</div><h1>Explore protein release</h1>
-<p>Control a simplified exocytosis sequence. Notice exactly when cargo can exit.</p>
+<p>Investigate two conditions: block fusion to test whether touching the membrane releases cargo, then allow fusion and compare the outcome. All controls work with touch or keyboard.</p>
 <div class="panel">
 <svg id="diagram" viewBox="0 0 340 155" role="img" aria-label="Conceptual exocytosis: vesicle, cell membrane, pore and protein cargo">
 <rect width="340" height="105" y="50" fill="#194b60"/><path d="M0 50 H340" stroke="#77e2d3" stroke-width="8"/>
@@ -55,13 +55,16 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <g id="released" fill="#ebc9ff" hidden><circle cx="141" cy="25" r="5"/><circle cx="172" cy="29" r="5"/><circle cx="199" cy="25" r="5"/></g>
 <text x="10" y="20">Outside cell</text><text x="10" y="146">Cell interior</text></svg>
 <p id="modelStatus" role="status" aria-live="polite"></p>
+<div class="actions"><button id="fusionToggle" class="secondary" aria-pressed="false" aria-describedby="conditionStatus">Block fusion</button><button id="blockedTest" class="secondary" disabled>Test blocked fusion</button></div>
+<p id="conditionStatus" class="small">Fusion permitted. A pore can form after approach.</p>
 <div class="actions"><button id="dock">1. Approach</button><button id="fuse" disabled>2. Open pore</button><button id="release" disabled>3. Release</button></div>
-<div class="actions"><button id="reset" class="secondary">Reset experiment</button></div></div>
+<p id="trialEvidence" role="status" aria-live="polite">Evidence: Neither condition has been tested yet.</p>
+<div class="actions"><button id="reset" class="secondary">Start a new trial</button></div></div>
 <p class="muted small">This models event order, not lipid physics, kinetics, or the molecular machinery of membrane fusion. No special materials or partners are needed.</p>
 </section>
 <section class="step" data-page="2" hidden>
 <div class="eyebrow">Feedback · 3 of 4</div><h1>What did the model show?</h1>
-<div class="panel"><p>Approach alone does not release cargo. Once a continuous pore connects the vesicle to the outside, soluble proteins can exit.</p>
+<div class="panel"><p>You compared two conditions: blocking fusion kept cargo inside even after approach. Allowing fusion let a pore open and cargo pass through. This is evidence that approach alone is insufficient.</p>
 <p>The model illustrates event order. It does not simulate real membrane proteins or rates.</p>
 <button id="retry" class="secondary">Try the experiment again</button></div>
 </section>
@@ -77,12 +80,23 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <script type="module">
 import {attachCheckpointVideo} from '../scripts/flagship-video-adapter.mjs';
 const $=id=>document.getElementById(id),hash='2be54741beee271dc0ddfa233691c1c0f1d8e917f5dd535508bdeae66f10f68c';
-const key='pp-inside-cell-paged-v1';let page=0,stage=0,adapter=null,url=null;
-function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage}))}catch{}}
+const key='pp-inside-cell-paged-v2-'+hash.slice(0,16);
+let page=0,stage=0,fusionBlocked=false,blockedObserved=false,adapter=null,url=null;
+function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusionBlocked,blockedObserved}))}catch{}}
 function paintModel(){
  $('vesicle').setAttribute('transform',stage===0?'translate(0 8)':'translate(0 -27)');
  $('pore').hidden=stage<2;$('released').hidden=stage<3;$('cargo').hidden=stage===3;
- $('dock').disabled=stage!==0;$('fuse').disabled=stage!==1;$('release').disabled=stage!==2;
+ $('dock').disabled=stage!==0;$('fuse').disabled=stage!==1||fusionBlocked;$('release').disabled=stage!==2;
+ $('fusionToggle').disabled=stage>1;
+ $('fusionToggle').setAttribute('aria-pressed',String(fusionBlocked));
+ $('fusionToggle').textContent=fusionBlocked?'Allow fusion':'Block fusion';
+ $('blockedTest').disabled=stage!==1||!fusionBlocked;
+ $('conditionStatus').textContent=fusionBlocked
+  ?'Fusion blocked: the vesicle can approach, but this model cannot form a pore.'
+  :'Fusion permitted: after approach, a pore can form.';
+ $('trialEvidence').textContent=blockedObserved
+  ?(stage===3?'Both conditions observed: blocked fusion kept cargo inside; permitted fusion released it.':'Blocked condition observed: cargo stayed inside. Now allow fusion and release cargo.')
+  :'Evidence: first block fusion, approach, and test the blocked condition.';
  $('modelStatus').textContent=[
  'Stage 0: Cargo is enclosed in a separate vesicle.',
  'Stage 1: Vesicle approaches the membrane; cargo remains inside.',
@@ -93,18 +107,26 @@ function paintModel(){
 function paint(){
  document.querySelectorAll('[data-page]').forEach(s=>s.hidden=Number(s.dataset.page)!==page);
  $('progress').textContent=['Teach','Do','Feedback','Next'][page]+' · '+(page+1)+' of 4';
- $('back').disabled=page===0;$('next').hidden=page===3;$('next').disabled=page===1&&stage!==3;
+ $('back').disabled=page===0;$('next').hidden=page===3;$('next').disabled=page===1&&(stage!==3||!blockedObserved);
  if(page!==0)$('video').pause();$('main').scrollTop=0;save();
 }
 function go(n){page=n;paint()}
-$('next').onclick=()=>{if(page<3&&(page!==1||stage===3))go(page+1)};
+$('next').onclick=()=>{if(page<3&&(page!==1||(stage===3&&blockedObserved)))go(page+1)};
 $('back').onclick=()=>{if(page>0)go(page-1)};
 $('dock').onclick=()=>{if(stage===0){stage=1;paintModel();paint()}};
-$('fuse').onclick=()=>{if(stage===1){stage=2;paintModel();paint()}};
+$('fusionToggle').onclick=()=>{
+ if(stage>1)return;
+ fusionBlocked=!fusionBlocked;paintModel();paint();
+};
+$('blockedTest').onclick=()=>{
+ if(stage!==1||!fusionBlocked)return;
+ blockedObserved=true;paintModel();paint();
+};
+$('fuse').onclick=()=>{if(stage===1&&!fusionBlocked){stage=2;paintModel();paint()}};
 $('release').onclick=()=>{if(stage===2){stage=3;paintModel();paint()}};
-$('reset').onclick=()=>{stage=0;paintModel();paint()};
-$('retry').onclick=()=>{stage=0;paintModel();go(1)};
-$('restart').onclick=()=>{stage=0;paintModel();go(0)};
+$('reset').onclick=()=>{stage=0;fusionBlocked=false;paintModel();paint()};
+$('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;paintModel();go(1)};
+$('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;paintModel();go(0)};
 function videoState(s){
  const active=['question','feedback','replay'].includes(s.phase);
  $('checkpoint').hidden=!active;$('answers').hidden=s.phase!=='question';
@@ -145,6 +167,6 @@ $('proof').onchange=async e=>{
 };
 window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
 try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
- if(d&&Number.isInteger(d.page)&&d.page>=0&&d.page<=3&&Number.isInteger(d.stage)&&d.stage>=0&&d.stage<=3&&!(d.page>1&&d.stage!==3)){page=d.page;stage=d.stage}}catch{}
+ if(d&&Number.isInteger(d.page)&&d.page>=0&&d.page<=3&&Number.isInteger(d.stage)&&d.stage>=0&&d.stage<=3&&typeof d.fusionBlocked==='boolean'&&typeof d.blockedObserved==='boolean'&&!(d.stage>1&&d.fusionBlocked)&&!(d.page>1&&(d.stage!==3||!d.blockedObserved))){page=d.page;stage=d.stage;fusionBlocked=d.fusionBlocked;blockedObserved=d.blockedObserved}}catch{}
 paintModel();paint();
 </script></body></html>
