@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { validateCatalog } from './validate-catalog.mjs';
 import { fingerprintReviewedBundle } from './fingerprint-reviewed-bundle.mjs';
 import { canonicalHandoffPayload } from './verify-signed-handoff.mjs';
+import { readPrivateSigningKey } from './read-private-signing-key.mjs';
 
 const root = fs.realpathSync(fileURLToPath(new URL('../', import.meta.url)));
 const repository = 'jeffmartin22222-beep/path-purpose-showcase';
@@ -36,11 +37,6 @@ export function signReviewedBundle(sourceArg, keyArg, sourceArtifactId, outputAr
   insist(!within(keyPath, root) && !within(keyPath, source) &&
     !within(output, root) && !within(output, source) && output !== keyPath,
     'Key and detached record must remain outside the bundle and public checkout');
-  insist(fs.realpathSync(keyPath) === keyPath &&
-    fs.lstatSync(keyPath).isFile() && fs.lstatSync(keyPath).nlink === 1,
-    'Signing key must be an independent regular non-symlink file');
-  insist((fs.statSync(keyPath).mode & 0o077) === 0,
-    'Signing key permissions must exclude group and other access');
   insist(fs.realpathSync(path.dirname(output)) === path.dirname(output),
     'Record destination parent must not be a symlink');
   insist(Number.isFinite(now.getTime()), 'Invalid signing time');
@@ -55,7 +51,8 @@ export function signReviewedBundle(sourceArg, keyArg, sourceArtifactId, outputAr
     lessonId: lesson.id, lessonVersion: lesson.version, repository,
     schemaVersion: '1', sourceArtifactId
   };
-  const record = createSignedHandoffRecord(payload, fs.readFileSync(keyPath));
+  // Pin the trusted signing key to a single descriptor and reject concurrent replacement.
+  const record = createSignedHandoffRecord(payload, readPrivateSigningKey(keyPath));
   // Re-read the bundle after signing: reject concurrent changes before issuing record.
   insist(fingerprintReviewedBundle(source).sha256 === fingerprint.sha256,
     'Producer bundle changed during signing; discard record');
