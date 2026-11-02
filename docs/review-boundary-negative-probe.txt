@@ -1,0 +1,1 @@
+Security test fixture only. No curriculum, credentials, approvals, or student-facing content. This unrelated file must be rejected by the trusted review PR boundary validator. Never merge.
