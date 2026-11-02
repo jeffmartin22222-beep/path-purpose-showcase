@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import path from 'node:path';
 
 const FIELDS = ['bundleSha256', 'expiresAt', 'issuedAt', 'lessonId', 'lessonVersion', 'repository', 'schemaVersion', 'sourceArtifactId'];
 const ownFields = obj => obj && typeof obj === 'object' && !Array.isArray(obj) ? Object.keys(obj).sort() : [];
@@ -12,9 +13,23 @@ export function canonicalHandoffPayload(payload) {
   return JSON.stringify(Object.fromEntries(FIELDS.map(key => [key, payload[key]])));
 }
 
+// The detached record and owner-provisioned public key are separate trust inputs.
+// Reject symlinks (including symlinked parent paths), hardlinks, group/world
+// writable files and oversized files before reading either input. A symlink
+// could otherwise redirect the trusted key to attacker-controlled material.
+function trustedInputFile(candidate, label) {
+  const absolute = path.resolve(candidate);
+  const stat = fs.lstatSync(absolute);
+  assert(stat.isFile() && stat.nlink === 1 && (stat.mode & 0o022) === 0 &&
+    fs.realpathSync(absolute) === absolute && stat.size > 0 && stat.size <= 16384,
+    'Unsafe ' + label + ': require an independent non-symlink, non-writable regular file');
+  return absolute;
+}
+
 export function verifySignedHandoff(recordPath, publicKeyPath, expected, now = new Date()) {
-  const stat = fs.statSync(recordPath);
-  assert(stat.isFile() && stat.size > 0 && stat.size <= 16384, 'Invalid signed handoff record size');
+  recordPath = trustedInputFile(recordPath, 'signed handoff record');
+  publicKeyPath = trustedInputFile(publicKeyPath, 'trusted producer public key');
+  assert(recordPath !== publicKeyPath, 'Record and trusted public key must be separate files');
   const record = JSON.parse(fs.readFileSync(recordPath, 'utf8'));
   assert(JSON.stringify(ownFields(record)) === JSON.stringify(['payload', 'signature']), 'Invalid signed handoff envelope');
   const payload = record.payload;
