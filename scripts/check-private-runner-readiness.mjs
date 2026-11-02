@@ -106,7 +106,7 @@ export function evaluateRunnerReadiness({
     check(failures, 'Remote integration HEAD differs from trusted local checkout', () => {
       const ref = 'refs/heads/' + EXPECTED_BRANCH;
       const remote = execute('git', ['ls-remote', '--heads', 'origin', ref]);
-      const match = /^([a-f0-9]{40})\\t(refs\\/heads\\/feature\\/qa-gated-publishing)$/.exec(remote);
+      const match = /^([a-f0-9]{40})\t(refs\/heads\/feature\/qa-gated-publishing)$/.exec(remote);
       return Boolean(match) && match[2] === ref &&
         match[1] === execute('git', ['rev-parse', 'HEAD']);
     });
@@ -117,8 +117,8 @@ export function evaluateRunnerReadiness({
         const target = 'refs/heads/feature/runner-auth-probe-' + suffix;
         const output = execute('git', ['push', '--dry-run', '--porcelain',
           'origin', 'HEAD:' + target]);
-        return output.includes(target) && /\\[new branch\\]/.test(output) &&
-          !/\\[(?:remote )?rejected\\]|\\[error\\]/i.test(output);
+        return output.includes(target) && /\[new branch\]/.test(output) &&
+          !/\[(?:remote )?rejected\]|\[error\]/i.test(output);
       });
     }
   }
