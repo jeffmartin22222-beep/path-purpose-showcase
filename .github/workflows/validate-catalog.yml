@@ -31,6 +31,8 @@ jobs:
         run: node --check scripts/verify-signed-handoff.mjs
       - name: Check private producer signer syntax
         run: node --check scripts/sign-private-handoff.mjs
+      - name: Check pinned producer key reader syntax
+        run: node --check scripts/read-private-signing-key.mjs
       - name: Check private replay ledger syntax
         run: node --check scripts/private-handoff-ledger.mjs
       - name: Check explicit private ledger bootstrap syntax
