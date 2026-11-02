@@ -176,3 +176,23 @@ The private-bundle fingerprint routine now opens each file with POSIX `O_NOFOLLO
 The signed-handoff verifier now opens both the detached producer record and the separately provisioned trusted Ed25519 public key using `O_NOFOLLOW` after checking path ancestry and permissions. It reads each from that descriptor and compares device/inode, link count, size, nanosecond modification/change times, permissions and pathname identity before accepting the bytes. This rejects replacement of either file between the path check and read. Two synthetic regression tests swap the record and key inode during descriptor reads.
 
 This is a **local filesystem hardening measure**, not a production connection, independent approval, or protection against a privileged adversary controlling the runner. It assumes an isolated POSIX filesystem and secure private key custody. No genuine producer artifact has been received, and no review PR or release was created by this change. The next P0 remains provisioning immutable private artifact storage, trusted producer/runner credentials, shared replay ledger, and an independently approved signed transfer.
+
+### Private producer signing-key descriptor pinning — 2026-11-02
+
+The signer now reads its independently provisioned Ed25519 private PEM through
+`scripts/read-private-signing-key.mjs`, using `O_NOFOLLOW` and a pinned
+file descriptor. It rejects symlinked paths/ancestors, hardlinks, group/other
+permissions, files larger than 16 KiB, and a key whose device/inode, size,
+modification/change timestamps or pathname identity changes while being read.
+Five synthetic regression tests cover valid private input, unsafe links and
+permissions, oversize, inode replacement and same-length in-place modification.
+The key remains **private**; no signing keys or actual lesson artifacts were
+added to the repository.
+
+This is local filesystem defense-in-depth, not a managed signer, HSM, key
+rotation policy, authenticated artifact transport or proof of independent
+curriculum/rights/device review. A privileged adversary or mutable source
+volume can still defeat assumptions outside this module. Provision a trusted
+producer identity and immutable private storage before attempting a real
+signed producer-to-draft-PR transfer. Keep public catalog empty until four
+actual QA passes, benchmark signoff, physical iOS review and owner authorization.
