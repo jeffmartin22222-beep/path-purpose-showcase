@@ -83,6 +83,19 @@ try {
   });
   assert.equal(await page.locator('#aLabel').innerText(), '24 / 80');
   assert.equal(await page.locator('#meter').getAttribute('aria-valuenow'), '24');
+  // This tests only browser-tab draft restore, not authenticated LMS persistence.
+  for (const [id,value] of [['glucose','50'],['mitoCapacity','50']]) {
+    await page.locator('#'+id).evaluate((element,next) => {
+      element.value=next;
+      element.dispatchEvent(new Event('input',{bubbles:true}));
+    },value);
+  }
+  assert.equal(await page.locator('#aLabel').innerText(),'6 / 80');
+  await page.reload({waitUntil:'networkidle'});
+  assert.equal(await page.locator('#oxygen').inputValue(),'30');
+  assert.equal(await page.locator('#glucose').inputValue(),'50');
+  assert.equal(await page.locator('#mitoCapacity').inputValue(),'50');
+  assert.equal(await page.locator('#aLabel').innerText(),'6 / 80');
   await page.getByRole('button', { name: 'Reset investigation' }).click();
   assert.equal(await page.locator('#aLabel').innerText(), '80 / 80');
   assert.ok(await page.locator('#feedback').evaluate(element => element.classList.contains('hidden')));
