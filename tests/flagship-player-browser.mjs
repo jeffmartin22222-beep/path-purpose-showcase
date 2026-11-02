@@ -34,10 +34,19 @@ try{
     assert.match(await page.locator('#progress').innerText(),/Teach/);
     assert.equal(await page.locator('[data-page="0"]').isVisible(),true);
     assert.equal(await page.locator('#video').isVisible(),false);
+    assert.equal(await page.locator('#next').isDisabled(),true,'Teach must require a prediction');
+    await page.locator('[data-prediction="released"]').click();
+    assert.match(await page.locator('#predictionFeedback').innerText(),/Prediction saved/);
+    assert.equal(await page.locator('#next').isEnabled(),true);
+    await page.reload();
+    assert.equal(await page.locator('[data-prediction="released"]').getAttribute('aria-pressed'),'true');
+    assert.match(await page.locator('#predictionFeedback').innerText(),/Prediction saved/);
+    assert.equal(await page.locator('#next').isEnabled(),true);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,
       engine+' '+width+': horizontal overflow');
     await page.locator('#next').click();
     assert.match(await page.locator('#progress').innerText(),/Do/);
+    assert.match(await page.locator('#predictionRecall').innerText(),/Cargo leaves immediately/);
     assert.equal(await page.locator('#next').isDisabled(),true);
     // Compare the blocked condition with permitted fusion before progressing.
     await page.locator('#fusionToggle').click();
@@ -66,6 +75,7 @@ try{
     assert.match(await page.locator('#modelStatus').innerText(),/passed through/);
     await page.locator('#next').click();
     assert.match(await page.locator('#progress').innerText(),/Feedback/);
+    assert.match(await page.locator('#predictionCompare').innerText(),/Revising a prediction/);
     assert.equal(await page.locator('#next').isDisabled(),true,
       'Feedback must require evidence-based explanation');
     await page.locator('[data-evidence="approach"]').click();
@@ -91,6 +101,11 @@ try{
     assert.match(await page.locator('#progress').innerText(),/Next/);
     await page.locator('#restart').click();
     assert.match(await page.locator('#progress').innerText(),/Teach/);
+    assert.equal(await page.locator('#next').isDisabled(),true,'Restart clears prediction');
+    await page.locator('[data-prediction="enclosed"]').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('[data-prediction="enclosed"]').getAttribute('aria-pressed'),'true');
+    assert.equal(await page.locator('#next').isEnabled(),true);
     // A single successful trial cannot bypass the required comparison.
     await page.locator('#next').click();
     await page.locator('#dock').click();
@@ -118,6 +133,6 @@ try{
    }
   }finally{await browser.close()}
  }
- console.log('PASS: '+count+' Chromium/WebKit 320px/iPad draft-player scenarios; blocked/permitted fusion comparison, locked progression, reload persistence, wrong-media rejection, evidence explanation, feedback revision and keyboard/reload persistence.');
+ console.log('PASS: '+count+' Chromium/WebKit 320px/iPad draft-player scenarios; persistent Teach prediction, evidence-based prediction revision, blocked/permitted fusion comparison, locked progression, reload persistence, wrong-media rejection, evidence explanation, keyboard/reload persistence.');
  console.log('NOT TESTED: actual original MP4 decode, physical iOS, VoiceOver, captions, independent four-pass QA.');
 }finally{await new Promise(resolve=>server.close(resolve))}
