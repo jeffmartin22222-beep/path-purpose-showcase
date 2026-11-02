@@ -15,6 +15,7 @@ import { validateCatalog } from './validate-catalog.mjs';
 import { fingerprintReviewedBundle } from './fingerprint-reviewed-bundle.mjs';
 import { verifySignedHandoff } from './verify-signed-handoff.mjs';
 import { withPrivateHandoffLedger } from './private-handoff-ledger.mjs';
+import { rejectSyntheticEvidence } from './reject-synthetic-evidence.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const repo = 'jeffmartin22222-beep/path-purpose-showcase';
@@ -103,6 +104,11 @@ function main() {
     console.log('No GitHub calls, commits, or file copies were made.');
     return;
   }
+
+  // Reject explicitly synthetic attestations before reserving replay state,
+  // switching branches or creating a public PR. Offline test fixtures can
+  // still exercise signed preflight without being eligible for staging.
+  rejectSyntheticEvidence(source);
 
   // A digest computed from the same untrusted bundle is not authentication.
   // The caller must independently verify the expected digest against an
