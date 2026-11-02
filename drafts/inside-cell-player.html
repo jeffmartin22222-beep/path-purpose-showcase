@@ -48,11 +48,11 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <p>Control a simplified exocytosis sequence. Notice exactly when cargo can exit.</p>
 <div class="panel">
 <svg id="diagram" viewBox="0 0 340 155" role="img" aria-label="Conceptual exocytosis: vesicle, cell membrane, pore and protein cargo">
-<rect width="340" height="50" y="105" fill="#194b60"/><path d="M0 105 H340" stroke="#77e2d3" stroke-width="8"/>
-<g id="vesicle" transform="translate(0 -22)"><circle cx="170" cy="60" r="34" fill="#28485e" stroke="#f1b56f" stroke-width="6"/>
-<g id="cargo" fill="#ebc9ff"><circle cx="156" cy="54" r="5"/><circle cx="180" cy="55" r="5"/><circle cx="170" cy="73" r="5"/></g></g>
-<rect id="pore" x="156" y="99" width="28" height="14" fill="#092333" hidden/>
-<g id="released" fill="#ebc9ff" hidden><circle cx="141" cy="126" r="5"/><circle cx="172" cy="139" r="5"/><circle cx="199" cy="126" r="5"/></g>
+<rect width="340" height="105" y="50" fill="#194b60"/><path d="M0 50 H340" stroke="#77e2d3" stroke-width="8"/>
+<g id="vesicle" transform="translate(0 8)"><circle cx="170" cy="106" r="29" fill="#28485e" stroke="#f1b56f" stroke-width="6"/>
+<g id="cargo" fill="#ebc9ff"><circle cx="156" cy="99" r="5"/><circle cx="180" cy="100" r="5"/><circle cx="170" cy="117" r="5"/></g></g>
+<rect id="pore" x="156" y="44" width="28" height="14" fill="#092333" hidden/>
+<g id="released" fill="#ebc9ff" hidden><circle cx="141" cy="25" r="5"/><circle cx="172" cy="29" r="5"/><circle cx="199" cy="25" r="5"/></g>
 <text x="10" y="20">Outside cell</text><text x="10" y="146">Cell interior</text></svg>
 <p id="modelStatus" role="status" aria-live="polite"></p>
 <div class="actions"><button id="dock">1. Approach</button><button id="fuse" disabled>2. Open pore</button><button id="release" disabled>3. Release</button></div>
@@ -80,7 +80,7 @@ const $=id=>document.getElementById(id),hash='2be54741beee271dc0ddfa233691c1c0f1
 const key='pp-inside-cell-paged-v1';let page=0,stage=0,adapter=null,url=null;
 function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage}))}catch{}}
 function paintModel(){
- $('vesicle').setAttribute('transform',stage===0?'translate(0 -22)':'translate(0 0)');
+ $('vesicle').setAttribute('transform',stage===0?'translate(0 8)':'translate(0 -27)');
  $('pore').hidden=stage<2;$('released').hidden=stage<3;$('cargo').hidden=stage===3;
  $('dock').disabled=stage!==0;$('fuse').disabled=stage!==1;$('release').disabled=stage!==2;
  $('modelStatus').textContent=[
