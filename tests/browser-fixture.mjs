@@ -13,8 +13,8 @@ const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'showcase-browser-fixture-'))
 const lessonPath = path.join(temp, 'lessons/synthetic/index.html');
 const catalogPath = path.join(temp, 'catalog/approved.json');
 const smoke = path.join(repoRoot, 'tests/browser-smoke.mjs');
-const run = () => spawnSync(process.execPath, [smoke], {
-  env: { ...process.env, SHOWCASE_TEST_ROOT: temp },
+const run = (browserEngine = 'chromium') => spawnSync(process.execPath, [smoke], {
+  env: { ...process.env, SHOWCASE_TEST_ROOT: temp, SHOWCASE_BROWSER: browserEngine },
   encoding: 'utf8', timeout: 120000
 });
 const syntheticLesson = {
@@ -40,12 +40,17 @@ try {
   const html = '<!doctype html><html lang="en"><head><title>Fixture</title>' +
     '<meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
     '<body><h1>Synthetic fixture lesson</h1><p>Testing a nonempty approved catalog ' +
-    'in Chromium without ever publishing this fixture.</p></body></html>';
+    'in browser emulation without ever publishing this fixture.</p></body></html>';
   fs.writeFileSync(lessonPath, html);
   const positive = run();
   assert.equal(positive.status, 0, positive.stderr || positive.stdout || positive.error?.message);
   assert.match(positive.stdout, /Approved lesson browser checks: 1 lesson/);
-  console.log('PASS: nonempty catalog renders and its synthetic lesson loads at phone/tablet sizes.');
+  const webkitPositive = run('webkit');
+  assert.equal(webkitPositive.status, 0,
+    webkitPositive.stderr || webkitPositive.stdout || webkitPositive.error?.message);
+  assert.match(webkitPositive.stdout, /PASS: webkit emulated phone\/tablet/);
+  assert.match(webkitPositive.stdout, /Approved lesson browser checks: 1 lesson/);
+  console.log('PASS: nonempty catalog and synthetic lesson render on Chromium and WebKit phone/tablet.');
 
   // Even if a malicious manifest claims all four gates passed, the public
   // catalog must not show a lesson without its benchmark approval pointer.
