@@ -33,9 +33,9 @@ function fixture(t) {
     'gh api --method GET repos/jeffmartin22222-beep/path-purpose-showcase':
       JSON.stringify({ full_name: 'jeffmartin22222-beep/path-purpose-showcase',
         permissions: { push: true } }),
-    'git ls-remote --heads origin ' + REMOTE_REF: HEAD + '\t' + REMOTE_REF,
+    ['git ls-remote --heads origin ' + REMOTE_REF]: HEAD + '\t' + REMOTE_REF,
     'git rev-parse HEAD': HEAD,
-    'git push --dry-run --porcelain origin HEAD:' + PROBE:
+    ['git push --dry-run --porcelain origin HEAD:' + PROBE]:
       '*\tHEAD:' + PROBE + '\t[new branch]'
   };
   const calls = [];
