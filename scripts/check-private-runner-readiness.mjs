@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * Read-only operator preflight for the NOT-YET-CONNECTED private producer runner.
- * It checks local prerequisites only. It cannot verify GitHub credentials,
- * storage durability, producer signatures, review authenticity, or approval.
+ * It checks local prerequisites and, only with --verify-remote, remote
+ * repository permissions, base freshness and a non-mutating push dry run.
+ * This cannot prove storage durability, review authenticity or approval.
  * Never print credentials, private paths, or private ledger contents.
  */
 import fs from 'node:fs';
@@ -33,9 +34,12 @@ export function evaluateRunnerReadiness({
   environment = process.env,
   filesystem = fs,
   execute = (binary, args) => execFileSync(binary, args, {
-    cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 10000
+    cwd: repoRoot, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 15000,
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0' }
   }).trim(),
-  nodeVersion = process.versions.node
+  nodeVersion = process.versions.node,
+  verifyRemote = false,
+  probeSuffix = () => crypto.randomBytes(8).toString('hex')
 } = {}) {
   const failures = [];
   const root = path.resolve(repoRoot);
@@ -90,20 +94,61 @@ export function evaluateRunnerReadiness({
       return parsed.asymmetricKeyType === 'ed25519';
     });
   }
-  return { readyForSignedPreflight: failures.length === 0, failures };
+  // Opt-in remote probe is read-only in effect. Never print command output:
+  // it may contain a credential-bearing URL or an authentication error.
+  // Dry-run acceptance is not a substitute for a genuine signed draft PR.
+  if (verifyRemote && failures.length === 0) {
+    check(failures, 'GitHub API credential lacks Showcase repository push access', () => {
+      const response = JSON.parse(execute('gh', ['api', '--method', 'GET',
+        'repos/' + EXPECTED_REPO]));
+      return response.full_name === EXPECTED_REPO && response.permissions?.push === true;
+    });
+    check(failures, 'Remote integration HEAD differs from trusted local checkout', () => {
+      const ref = 'refs/heads/' + EXPECTED_BRANCH;
+      const remote = execute('git', ['ls-remote', '--heads', 'origin', ref]);
+      const match = /^([a-f0-9]{40})\\t(refs\\/heads\\/feature\\/qa-gated-publishing)$/.exec(remote);
+      return Boolean(match) && match[2] === ref &&
+        match[1] === execute('git', ['rev-parse', 'HEAD']);
+    });
+    if (failures.length === 0) {
+      check(failures, 'Git push credential failed non-mutating dry-run probe', () => {
+        const suffix = probeSuffix();
+        if (!/^[a-f0-9]{16}$/.test(suffix)) return false;
+        const target = 'refs/heads/feature/runner-auth-probe-' + suffix;
+        const output = execute('git', ['push', '--dry-run', '--porcelain',
+          'origin', 'HEAD:' + target]);
+        return output.includes(target) && /\\[new branch\\]/.test(output) &&
+          !/\\[(?:remote )?rejected\\]|\\[error\\]/i.test(output);
+      });
+    }
+  }
+  const result = { readyForSignedPreflight: failures.length === 0, failures };
+  if (verifyRemote) result.remoteProbePassed = failures.length === 0;
+  return result;
 }
 
 function main() {
-  const { readyForSignedPreflight, failures } = evaluateRunnerReadiness();
+  const flags = process.argv.slice(2);
+  if (flags.length > 1 || (flags.length === 1 && flags[0] !== '--verify-remote')) {
+    console.error('Usage: node scripts/check-private-runner-readiness.mjs [--verify-remote]');
+    process.exitCode = 1;
+    return;
+  }
+  const verifyRemote = flags.includes('--verify-remote');
+  const { readyForSignedPreflight, failures } = evaluateRunnerReadiness({ verifyRemote });
   if (!readyForSignedPreflight) {
     console.error('Private runner prerequisites incomplete:');
     for (const failure of failures) console.error('- ' + failure);
     process.exitCode = 1;
     return;
   }
-  console.log('Local private runner prerequisites passed. No credentials were used.');
-  console.log('NOT verified: producer storage/transport, token authorization, remote freshness,');
-  console.log('ledger durability, independent signed bundle, genuine QA, or owner approval.');
+  console.log(verifyRemote
+    ? 'Local prerequisites, GitHub API push permission, remote HEAD and git push dry run passed.'
+    : 'Local private runner prerequisites passed. No credentials were used.');
+  console.log(verifyRemote
+    ? 'NOT verified: actual branch creation, producer storage/transport, ledger durability,'
+    : 'NOT verified: token authorization, remote freshness, producer storage/transport,');
+  console.log('independent signed bundle, genuine QA, physical iOS tests, or owner approval.');
   console.log('Next: use stage-reviewed-package.mjs signed dry run with an independently delivered bundle.');
 }
 
