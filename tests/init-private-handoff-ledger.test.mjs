@@ -49,3 +49,16 @@ test('bootstrap refuses public repository path', () => {
   assert.notEqual(result.status, 0);
   assert.equal(fs.existsSync(path.join(root, 'NEVER-CREATE-PRIVATE-LEDGER.json')), false);
 });
+
+test('bootstrap rejects a world-writable private ledger directory', () => fixture(directory => {
+  fs.chmodSync(directory, 0o777);
+  try {
+    const ledger = path.join(directory, 'replay.json');
+    const result = run(ledger, '--acknowledge-new-private-ledger');
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /must not be world-writable/);
+    assert.equal(fs.existsSync(ledger), false);
+  } finally {
+    fs.chmodSync(directory, 0o700);
+  }
+}));
