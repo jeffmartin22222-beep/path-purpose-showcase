@@ -193,6 +193,15 @@ test('reviewed package import dry-run does not write to Showcase', () => withFix
   assert.match(run.stdout, /DRY RUN/);
 }));
 
+test('synthetic reviewed-package fixture cannot be applied to a public branch', () => withFixture(f => {
+  const importer = fileURLToPath(new URL('../scripts/import-approved-package.mjs', import.meta.url));
+  const run = spawnSync(process.execPath,
+    [importer, f.root, '--apply', '--acknowledge-public-reviewed'],
+    { encoding: 'utf8' });
+  assert.notEqual(run.status, 0);
+  assert.match(run.stderr, /Synthetic or test-only publication evidence blocked/);
+}));
+
 test('rejects orphaned lesson folders when the catalog is empty', () => withFixture(f => {
   f.catalog.lessons = []; f.save();
   assert.throws(() => validateCatalog(f.root), /Unapproved or unsupported lessons directory entry/);
