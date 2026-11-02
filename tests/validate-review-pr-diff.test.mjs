@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateReviewDiff } from '../scripts/validate-review-pr-diff.mjs';
+import { validateReviewDiff, validateReviewCatalogDelta } from '../scripts/validate-review-pr-diff.mjs';
 
 const valid = {
   headRef: 'feature/review-inside-the-cell-012345abcdef',
@@ -50,4 +50,34 @@ test('requires catalog, lesson and evidence changes', () => {
   for (const i of [0, 1, 2]) {
     assert.throws(() => check(valid.changes.filter((_, index) => index !== i)), /must modify catalog/);
   }
+});
+
+const digest = '012345abcdef' + '0'.repeat(52);
+const old = { id: 'prior-lesson', version: '1.0.0', packageSha256: 'a'.repeat(64), title: 'Existing' };
+const added = { id: 'inside-the-cell', version: '1.1.0', packageSha256: digest };
+const baseCatalog = { schemaVersion: '1.0.0', generatedAt: null, lessons: [old] };
+const headCatalog = { schemaVersion: '1.0.0', generatedAt: '2026-11-02T00:00:00Z', lessons: [old, added] };
+const delta = (head = headCatalog, base = baseCatalog, headRef = valid.headRef) =>
+  validateReviewCatalogDelta({ headRef, baseCatalog: base, headCatalog: head });
+test('catalog delta allows exactly one new version-pinned lesson and unchanged old records', () => {
+  assert.deepEqual(delta(), { lessonId: 'inside-the-cell', version: '1.1.0' });
+  assert.deepEqual(delta({ ...headCatalog, lessons: [added, { ...old }] }),
+    { lessonId: 'inside-the-cell', version: '1.1.0' });
+});
+test('catalog delta rejects changing or removing previously approved records', () => {
+  assert.throws(() => delta({ ...headCatalog, lessons: [{ ...old, title: 'Tampered' }, added] }), /cannot remove or modify/);
+  assert.throws(() => delta({ ...headCatalog, lessons: [added] }), /exactly one/);
+});
+test('catalog delta rejects multiple additions and duplicate IDs', () => {
+  assert.throws(() => delta({ ...headCatalog, lessons: [old, added, { ...added, id: 'extra' }] }), /exactly one/);
+  assert.throws(() => delta({ ...headCatalog, lessons: [old, added, added] }), /duplicate/);
+});
+test('catalog delta rejects branch lesson or package digest mismatch', () => {
+  assert.throws(() => delta({ ...headCatalog, lessons: [old, { ...added, id: 'other' }] }), /branch ID/);
+  assert.throws(() => delta({ ...headCatalog, lessons: [old, { ...added, packageSha256: 'f'.repeat(64) }] }), /branch digest/);
+  assert.throws(() => delta(headCatalog, baseCatalog, 'feature/review-inside-the-cell-ffffffffffff'), /branch digest/);
+});
+test('catalog delta rejects schema changes and malformed manifests', () => {
+  assert.throws(() => delta({ ...headCatalog, schemaVersion: '2.0.0' }), /catalog versions/);
+  assert.throws(() => delta({ ...headCatalog, lessons: null }), /catalog versions/);
 });
