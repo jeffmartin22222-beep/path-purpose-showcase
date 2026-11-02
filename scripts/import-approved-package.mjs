@@ -9,6 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { validateCatalog } from './validate-catalog.mjs';
 import { safeImportDestination } from './safe-import-path.mjs';
+import { safeImportSource } from './safe-import-source.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 function requireThat(condition, message) {
@@ -36,11 +37,7 @@ function importPackage() {
     }
   }
   const filePairs = [...paths].map(relative => {
-    const from = path.resolve(source, ...relative.split('/'));
-    requireThat(from.startsWith(source + path.sep), 'Source escapes private bundle');
-    const sourceStat = fs.lstatSync(from);
-    requireThat(sourceStat.isFile() && !sourceStat.isSymbolicLink() && sourceStat.nlink === 1,
-      'Source file is not an independent regular file: ' + relative);
+    const from = safeImportSource(source, relative);
     const to = safeImportDestination(root, relative);
     return { from, to, relative };
   });
