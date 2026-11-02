@@ -20,9 +20,14 @@ const run = () => spawnSync(process.execPath, [smoke], {
 const syntheticLesson = {
   id: 'synthetic', title: 'Synthetic browser fixture only', grade: '8',
   subject: 'Science', course: 'Biology', unit: 'Browser tests',
-  entry: 'lessons/synthetic/index.html', rights: { status: 'cleared' },
+  version: 'synthetic-fixture', sha256: 'a'.repeat(64),
+  packageSha256: 'b'.repeat(64),
+  entry: 'lessons/synthetic/index.html',
+  rights: { status: 'cleared', basis: 'original', reviewedBy: 'Synthetic fixture', reviewedAt: '2026-11-01T00:00:00Z' },
+  benchmark: { path: 'evidence/synthetic/benchmark.json', sha256: 'c'.repeat(64) },
   qa: Object.fromEntries(['content', 'pedagogy', 'technical', 'experience']
-    .map(gate => [gate, { status: 'passed' }]))
+    .map(gate => [gate, { status: 'passed', reviewedBy: 'Synthetic fixture',
+      reviewedAt: '2026-11-01T00:00:00Z', evidence: ['evidence/synthetic/' + gate + '/fixture.json'] }]))
 };
 try {
   fs.mkdirSync(path.dirname(lessonPath), { recursive: true });
@@ -41,6 +46,18 @@ try {
   assert.equal(positive.status, 0, positive.stderr || positive.stdout || positive.error?.message);
   assert.match(positive.stdout, /Approved lesson browser checks: 1 lesson/);
   console.log('PASS: nonempty catalog renders and its synthetic lesson loads at phone/tablet sizes.');
+
+  // Even if a malicious manifest claims all four gates passed, the public
+  // catalog must not show a lesson without its benchmark approval pointer.
+  delete syntheticLesson.benchmark;
+  writeCatalog();
+  const missingBenchmark = run();
+  assert.notEqual(missingBenchmark.status, 0, 'Missing benchmark must hide the catalog entry');
+  assert.match(missingBenchmark.stderr, /Showcase rejected catalog entries/);
+  syntheticLesson.benchmark = { path: 'evidence/synthetic/benchmark.json', sha256: 'c'.repeat(64) };
+  writeCatalog();
+  console.log('PASS: public catalog hides lessons missing benchmark metadata.');
+
 
   fs.writeFileSync(lessonPath, html.replace('</body>',
     '<img src="https://example.invalid/never-fetch.png" alt="External dependency"></body>'));
