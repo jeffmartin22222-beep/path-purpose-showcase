@@ -90,18 +90,24 @@ try{
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('[data-evidence="blocked"]').getAttribute('aria-pressed'),'true');
     assert.match(await page.locator('#evidenceFeedback').innerText(),/Supported/);
+    assert.equal(await page.locator('#next').isDisabled(),true,'Own explanation required before Next');
+    await page.locator('#explanation').fill('The blocked vesicle approached but cargo stayed inside. A pore was needed for release.');
+    assert.match(await page.locator('#explanationStatus').innerText(),/saved in this browser tab/);
     assert.equal(await page.locator('#next').isEnabled(),true);
     await page.reload();
+    assert.equal(await page.locator('#explanation').inputValue(),'The blocked vesicle approached but cargo stayed inside. A pore was needed for release.');
     assert.match(await page.locator('#evidenceFeedback').innerText(),/Supported/);
     assert.equal(await page.locator('#next').isEnabled(),true);
     await page.locator('#next').click();
     assert.match(await page.locator('#progress').innerText(),/Next/);
+    assert.match(await page.locator('#reflectionSummary').innerText(),/A pore was needed for release/);
     assert.equal(await page.locator('#next').isVisible(),false);
     await page.reload();
     assert.match(await page.locator('#progress').innerText(),/Next/);
     await page.locator('#restart').click();
     assert.match(await page.locator('#progress').innerText(),/Teach/);
     assert.equal(await page.locator('#next').isDisabled(),true,'Restart clears prediction');
+    assert.equal(await page.locator('#explanation').inputValue(),'','Restart clears explanation');
     await page.locator('[data-prediction="enclosed"]').focus();
     await page.keyboard.press('Enter');
     assert.equal(await page.locator('[data-prediction="enclosed"]').getAttribute('aria-pressed'),'true');
@@ -133,6 +139,6 @@ try{
    }
   }finally{await browser.close()}
  }
- console.log('PASS: '+count+' Chromium/WebKit 320px/iPad draft-player scenarios; persistent Teach prediction, evidence-based prediction revision, blocked/permitted fusion comparison, locked progression, reload persistence, wrong-media rejection, evidence explanation, keyboard/reload persistence.');
+ console.log('PASS: '+count+' Chromium/WebKit 320px/iPad draft-player scenarios; persistent Teach prediction, evidence-based prediction revision, blocked/permitted fusion comparison, locked progression, reload persistence, wrong-media rejection, evidence explanation, own written reasoning with refresh/restart, keyboard/reload persistence.');
  console.log('NOT TESTED: actual original MP4 decode, physical iOS, VoiceOver, captions, independent four-pass QA.');
 }finally{await new Promise(resolve=>server.close(resolve))}
