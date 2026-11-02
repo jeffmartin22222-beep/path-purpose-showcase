@@ -14,9 +14,11 @@ function requireThat(ok, message) {
   if (!ok) throw new Error(message);
 }
 
-export function validateReviewDiff({ headRef, baseRef, changes }) {
+export function validateReviewDiff({ headRef, baseRef, headRepo, changes }) {
   requireThat(baseRef === 'feature/qa-gated-publishing',
     'Review PR must target the QA integration branch');
+  requireThat(headRepo === 'jeffmartin22222-beep/path-purpose-showcase',
+    'Review PR head must originate from the trusted Showcase repository');
   const match = /^feature\/review-([a-z0-9]+(?:-[a-z0-9]+)*)-([a-f0-9]{12})$/.exec(headRef || '');
   requireThat(match, 'Review PR must use the signed-package review branch format');
   requireThat(Array.isArray(changes) && changes.length > 0 && changes.length <= 512,
@@ -100,9 +102,16 @@ function git(args) {
 
 function main() {
   const { PP_REVIEW_HEAD_REF: headRef, PP_REVIEW_BASE_REF: baseRef,
-    PP_REVIEW_BASE_SHA: baseSha, PP_REVIEW_HEAD_SHA: headSha } = process.env;
+    PP_REVIEW_BASE_SHA: baseSha, PP_REVIEW_HEAD_SHA: headSha,
+    PP_REVIEW_HEAD_REPO: headRepo } = process.env;
   requireThat(/^[a-f0-9]{40}$/.test(baseSha || '') && /^[a-f0-9]{40}$/.test(headSha || ''),
     'Missing exact PR base/head commit SHA');
+  // The private staging tool creates one commit directly from the current
+  // integration HEAD. Reject rebased/merged/stale or unrelated histories; a
+  // matching branch name alone is not producer authentication.
+  requireThat(git(['rev-list', '--parents', '-n', '1', headSha]).trim() ===
+    headSha + ' ' + baseSha,
+    'Review PR must contain one direct child commit of the current integration base');
   const tokens = git(['diff', '--name-status', '-z', '--no-renames', baseSha, headSha]).split('\0');
   requireThat(tokens.at(-1) === '', 'Malformed NUL-delimited Git diff');
   tokens.pop();
@@ -115,7 +124,7 @@ function main() {
     const mode = /^([0-9]{6}) blob [a-f0-9]{40}\t/.exec(treeEntry)?.[1];
     changes.push({ status, file, mode });
   }
-  const result = validateReviewDiff({ headRef, baseRef, changes });
+  const result = validateReviewDiff({ headRef, baseRef, headRepo, changes });
   const catalogDelta = validateReviewCatalogDelta({
     headRef,
     baseCatalog: JSON.parse(git(['show', baseSha + ':catalog/approved.json'])),

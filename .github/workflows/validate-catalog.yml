@@ -25,6 +25,7 @@ jobs:
         if: github.event_name == 'pull_request' && github.base_ref == 'feature/qa-gated-publishing'
         env:
           PP_REVIEW_HEAD_REF: ${{ github.head_ref }}
+          PP_REVIEW_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           PP_REVIEW_BASE_REF: ${{ github.base_ref }}
           PP_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PP_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}

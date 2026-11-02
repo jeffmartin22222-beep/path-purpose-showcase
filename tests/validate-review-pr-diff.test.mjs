@@ -4,6 +4,7 @@ import { validateReviewDiff, validateReviewCatalogDelta } from '../scripts/valid
 
 const valid = {
   headRef: 'feature/review-inside-the-cell-012345abcdef',
+  headRepo: 'jeffmartin22222-beep/path-purpose-showcase',
   baseRef: 'feature/qa-gated-publishing',
   changes: [
     { status: 'M', file: 'catalog/approved.json', mode: '100644' },
@@ -18,6 +19,12 @@ test('accepts one content-only review PR', () => {
 test('rejects non-review head and wrong base', () => {
   assert.throws(() => check(valid.changes, { headRef: 'feature/qa-gated-publishing' }), /branch format/);
   assert.throws(() => check(valid.changes, { baseRef: 'main' }), /integration branch/);
+});
+test('rejects forked review PRs even with a plausible branch name and allowed paths', () => {
+  assert.throws(() => check(valid.changes, { headRepo: 'untrusted-fork/path-purpose-showcase' }),
+    /trusted Showcase repository/);
+  assert.throws(() => check(valid.changes, { headRepo: undefined }),
+    /trusted Showcase repository/);
 });
 test('rejects changes to workflows or validators', () => {
   for (const file of ['.github/workflows/validate-catalog.yml', 'scripts/validate-catalog.mjs']) {

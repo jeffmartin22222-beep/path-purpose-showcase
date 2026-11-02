@@ -33,15 +33,35 @@ test('CLI compares actual Git trees, accepts content-only changes and blocks wor
     git(dir, 'commit', '-qm', 'review fixture');
     const env = { ...process.env,
       PP_REVIEW_HEAD_REF: 'feature/review-inside-the-cell-012345abcdef',
+      PP_REVIEW_HEAD_REPO: 'jeffmartin22222-beep/path-purpose-showcase',
       PP_REVIEW_BASE_REF: 'feature/qa-gated-publishing',
       PP_REVIEW_BASE_SHA: baseSha,
       PP_REVIEW_HEAD_SHA: git(dir, 'rev-parse', 'HEAD') };
     const good = spawnSync(process.execPath, [cli], { cwd: dir, env, encoding: 'utf8' });
     assert.equal(good.status, 0, good.stderr);
     assert.match(good.stdout, /NOT publication approval/);
+    // A review commit based on an obsolete or divergent integration HEAD
+    // cannot be accepted merely because the file diff appears content-only.
+    git(dir, 'switch', '-qc', 'diverged-base', baseSha);
+    write(dir, 'unrelated.txt', 'Divergent integration change\n');
+    git(dir, 'add', '.');
+    git(dir, 'commit', '-qm', 'new integration base');
+    const divergent = spawnSync(process.execPath, [cli], { cwd: dir,
+      env: { ...env, PP_REVIEW_BASE_SHA: git(dir, 'rev-parse', 'HEAD') }, encoding: 'utf8' });
+    assert.notEqual(divergent.status, 0);
+    assert.match(divergent.stderr, /one direct child commit/);
+    git(dir, 'switch', '-q', 'feature/review-inside-the-cell-012345abcdef');
     write(dir, '.github/workflows/validate-catalog.yml', 'name: unsafe fixture\n');
     git(dir, 'add', '.');
     git(dir, 'commit', '-qm', 'malicious workflow change');
+    const multiCommit = spawnSync(process.execPath, [cli], { cwd: dir,
+      env: { ...env, PP_REVIEW_HEAD_SHA: git(dir, 'rev-parse', 'HEAD') }, encoding: 'utf8' });
+    assert.notEqual(multiCommit.status, 0);
+    assert.match(multiCommit.stderr, /one direct child commit/);
+    // Squash to one direct child so the separate unauthorized-file check is
+    // exercised rather than masked by the ancestry check.
+    git(dir, 'reset', '--soft', baseSha);
+    git(dir, 'commit', '-qm', 'single review commit with unauthorized workflow');
     const bad = spawnSync(process.execPath, [cli], { cwd: dir,
       env: { ...env, PP_REVIEW_HEAD_SHA: git(dir, 'rev-parse', 'HEAD') }, encoding: 'utf8' });
     assert.notEqual(bad.status, 0);
