@@ -28,6 +28,15 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <section class="step" data-page="0">
 <div class="eyebrow">Teach · 1 of 4</div><h1>Inside the Cell: How does cargo leave?</h1>
 <p>Proteins can travel inside a membrane-bound vesicle. Approaching the plasma membrane does not release cargo: an open fusion pore is needed.</p>
+<div class="panel" role="group" aria-labelledby="predictionTitle">
+<h2 id="predictionTitle">Make a prediction</h2>
+<p>A vesicle touches the cell membrane, but no fusion pore opens. What do you predict happens to its protein cargo?</p>
+<div class="actions" id="predictionChoices">
+<button class="secondary" data-prediction="enclosed" aria-pressed="false">Cargo stays inside the vesicle</button>
+<button class="secondary" data-prediction="released" aria-pressed="false">Cargo leaves immediately</button>
+</div>
+<p id="predictionFeedback" role="status" aria-live="polite">Choose a prediction before exploring. You can test it in the next screen.</p>
+</div>
 <div class="panel"><h2>Original moving-video proof</h2>
 <p class="muted small">Choose the exact silent 8-second producer proof from November 2. This local file never uploads. No narration, captions, or scientific signoff exists yet.</p>
 <label for="proof">Local MP4 proof (optional for draft walkthrough)</label>
@@ -58,13 +67,14 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <div class="actions"><button id="fusionToggle" class="secondary" aria-pressed="false" aria-describedby="conditionStatus">Block fusion</button><button id="blockedTest" class="secondary" disabled>Test blocked fusion</button></div>
 <p id="conditionStatus" class="small">Fusion permitted. A pore can form after approach.</p>
 <div class="actions"><button id="dock">1. Approach</button><button id="fuse" disabled>2. Open pore</button><button id="release" disabled>3. Release</button></div>
+<p id="predictionRecall" class="small">Your prediction will appear here after you choose one on Teach.</p>
 <p id="trialEvidence" role="status" aria-live="polite">Evidence: Neither condition has been tested yet.</p>
 <div class="actions"><button id="reset" class="secondary">Start a new trial</button></div></div>
 <p class="muted small">This models event order, not lipid physics, kinetics, or the molecular machinery of membrane fusion. No special materials or partners are needed.</p>
 </section>
 <section class="step" data-page="2" hidden>
 <div class="eyebrow">Feedback · 3 of 4</div><h1>What did the model show?</h1>
-<div class="panel"><p>You compared two conditions: blocking fusion kept cargo inside even after approach. Allowing fusion let a pore open and cargo pass through. This is evidence that approach alone is insufficient.</p>
+<div class="panel"><p id="predictionCompare" role="status" aria-live="polite"></p><p>You compared two conditions: blocking fusion kept cargo inside even after approach. Allowing fusion let a pore open and cargo pass through. This is evidence that approach alone is insufficient.</p>
 <p>The model illustrates event order. It does not simulate real membrane proteins or rates.</p>
 <div class="checkpoint" role="group" aria-labelledby="evidenceQuestion">
 <h2 id="evidenceQuestion">Which observation is evidence that fusion is needed for cargo release?</h2>
@@ -91,13 +101,18 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 import {attachCheckpointVideo} from '../scripts/flagship-video-adapter.mjs';
 const $=id=>document.getElementById(id),hash='2be54741beee271dc0ddfa233691c1c0f1d8e917f5dd535508bdeae66f10f68c';
 const key='pp-inside-cell-paged-v2-'+hash.slice(0,16);
-let page=0,stage=0,fusionBlocked=false,blockedObserved=false,evidenceChoice=null,adapter=null,url=null;
+let page=0,stage=0,fusionBlocked=false,blockedObserved=false,prediction=null,evidenceChoice=null,adapter=null,url=null;
+const predictionLabels={enclosed:'Cargo stays inside the vesicle',released:'Cargo leaves immediately'};
+const predictionResponses={
+ enclosed:'Prediction saved. Test it: compare a blocked pore with a permitted pore. A prediction is not a grade.',
+ released:'Prediction saved. Test it: can cargo cross the membrane without an open pore? A prediction is not a grade.'
+};
 const evidenceResponses={
  blocked:'Supported: blocking fusion kept cargo enclosed after approach. When fusion was permitted, a pore opened and cargo exited. This comparison supports the need for an open pore in this model.',
  approach:'Look again: in the blocked trial the vesicle approached, but cargo stayed enclosed. Approach alone did not release it. Compare that result with the open-pore trial.',
  both:'Check the blocked trial: cargo stayed inside when no pore could form. Only the permitted-fusion trial showed cargo leaving through an open pore.'
 };
-function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusionBlocked,blockedObserved,evidenceChoice}))}catch{}}
+function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusionBlocked,blockedObserved,prediction,evidenceChoice}))}catch{}}
 function paintModel(){
  $('vesicle').setAttribute('transform',stage===0?'translate(0 8)':'translate(0 -27)');
  $('pore').hidden=stage<2;$('released').hidden=stage<3;$('cargo').hidden=stage===3;
@@ -119,6 +134,21 @@ function paintModel(){
  'Stage 3: Protein cargo has passed through the pore.'
  ][stage];save();
 }
+function paintPrediction(){
+ document.querySelectorAll('[data-prediction]').forEach(b=>
+  b.setAttribute('aria-pressed',String(b.dataset.prediction===prediction)));
+ $('predictionFeedback').textContent=prediction
+  ?predictionResponses[prediction]
+  :'Choose a prediction before exploring. You can test it in the next screen.';
+ $('predictionRecall').textContent=prediction
+  ?'Your prediction: '+predictionLabels[prediction]+'. Compare both conditions to test it.'
+  :'Return to Teach to make your prediction.';
+ $('predictionCompare').textContent=prediction==='enclosed'
+  ?'Your prediction matched the blocked-fusion observation: without an open pore, cargo stayed enclosed.'
+  :prediction==='released'
+   ?'Your prediction was that cargo would leave immediately. The blocked-fusion trial showed otherwise. Revising a prediction using evidence is part of science.'
+   :'Return to Teach to make a prediction, then compare it with your investigation.';
+}
 function paintEvidence(){
  document.querySelectorAll('[data-evidence]').forEach(b=>{
   b.setAttribute('aria-pressed',String(b.dataset.evidence===evidenceChoice));
@@ -128,15 +158,19 @@ function paintEvidence(){
   :'Select the supported observation to see feedback and continue.';
 }
 function paint(){
- paintEvidence();
+ paintPrediction();paintEvidence();
  document.querySelectorAll('[data-page]').forEach(s=>s.hidden=Number(s.dataset.page)!==page);
  $('progress').textContent=['Teach','Do','Feedback','Next'][page]+' · '+(page+1)+' of 4';
  $('back').disabled=page===0;$('next').hidden=page===3;
- $('next').disabled=(page===1&&(stage!==3||!blockedObserved))||(page===2&&evidenceChoice!=='blocked');
+ $('next').disabled=(page===0&&!prediction)||(page===1&&(stage!==3||!blockedObserved))||(page===2&&evidenceChoice!=='blocked');
  if(page!==0)$('video').pause();$('main').scrollTop=0;save();
 }
 function go(n){page=n;paint()}
-$('next').onclick=()=>{if(page<3&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||evidenceChoice==='blocked'))go(page+1)};
+document.querySelectorAll('[data-prediction]').forEach(b=>b.onclick=()=>{
+ if(page!==0)return;
+ prediction=b.dataset.prediction;paint();
+});
+$('next').onclick=()=>{if(page<3&&(page!==0||prediction)&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||evidenceChoice==='blocked'))go(page+1)};
 $('back').onclick=()=>{if(page>0)go(page-1)};
 $('dock').onclick=()=>{if(stage===0){stage=1;paintModel();paint()}};
 $('fusionToggle').onclick=()=>{
@@ -151,7 +185,7 @@ $('fuse').onclick=()=>{if(stage===1&&!fusionBlocked){stage=2;paintModel();paint(
 $('release').onclick=()=>{if(stage===2){stage=3;paintModel();paint()}};
 $('reset').onclick=()=>{stage=0;fusionBlocked=false;evidenceChoice=null;paintModel();paint()};
 $('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;evidenceChoice=null;paintModel();go(1)};
-$('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;evidenceChoice=null;paintModel();go(0)};
+$('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;prediction=null;evidenceChoice=null;paintModel();go(0)};
 document.querySelectorAll('[data-evidence]').forEach(b=>b.onclick=()=>{
  if(page!==2||stage!==3||!blockedObserved)return;
  evidenceChoice=b.dataset.evidence;paint();
@@ -197,9 +231,12 @@ $('proof').onchange=async e=>{
 window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
 try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
  if(d&&Number.isInteger(d.page)&&d.page>=0&&d.page<=3&&Number.isInteger(d.stage)&&d.stage>=0&&d.stage<=3&&typeof d.fusionBlocked==='boolean'&&typeof d.blockedObserved==='boolean'&&!(d.stage>1&&d.fusionBlocked)&&!(d.page>1&&(d.stage!==3||!d.blockedObserved))&&
- (d.evidenceChoice===undefined||d.evidenceChoice===null||Object.hasOwn(evidenceResponses,d.evidenceChoice))){
+ (d.evidenceChoice===undefined||d.evidenceChoice===null||Object.hasOwn(evidenceResponses,d.evidenceChoice))&&
+ (d.prediction===undefined||d.prediction===null||Object.hasOwn(predictionLabels,d.prediction))){
  page=d.page===3&&!d.evidenceChoice?2:d.page;
+ if(page>0&&!d.prediction)page=0; // Earlier draft states must make the new prediction.
  stage=d.stage;fusionBlocked=d.fusionBlocked;blockedObserved=d.blockedObserved;
+ prediction=d.prediction||null;
  evidenceChoice=d.evidenceChoice||null;
  }}catch{}
 paintModel();paint();
