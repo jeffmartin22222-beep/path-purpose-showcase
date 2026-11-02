@@ -21,6 +21,8 @@ jobs:
         run: node --check scripts/import-approved-package.mjs
       - name: Check symlink-safe import path syntax
         run: node --check scripts/safe-import-path.mjs
+      - name: Check private source containment syntax
+        run: node --check scripts/safe-import-source.mjs
       - name: Check reviewed-package staging tool syntax
         run: node --check scripts/stage-reviewed-package.mjs
       - name: Check private bundle fingerprint tool syntax
