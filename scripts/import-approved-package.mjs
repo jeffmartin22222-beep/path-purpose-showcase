@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { validateCatalog } from './validate-catalog.mjs';
 import { safeImportDestination } from './safe-import-path.mjs';
 import { safeImportSource } from './safe-import-source.mjs';
+import { rejectSyntheticEvidence } from './reject-synthetic-evidence.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 function requireThat(condition, message) {
@@ -51,6 +52,9 @@ function importPackage() {
   }
   requireThat(flags.includes('--acknowledge-public-reviewed'),
     'Refusing public import without explicit reviewed-content acknowledgement');
+  // Unit-test fixtures may validate structurally, but must never be copied
+  // into a public review branch as if their QA attestations were real.
+  rejectSyntheticEvidence(source);
   const branch = execFileSync('git', ['branch', '--show-current'], { cwd: root, encoding: 'utf8' }).trim();
   requireThat(branch.startsWith('feature/') && branch !== 'main',
     'Import only on a feature branch, never main');
