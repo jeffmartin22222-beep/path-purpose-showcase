@@ -45,7 +45,7 @@ test('conflicting source for same lesson version is blocked', () => fixture(ledg
     () => pr), /replay or conflicting/);
 }));
 test('preexisting lock prevents simultaneous runner staging', () => fixture(ledger => {
-  fs.writeFileSync(ledger + '.lock', 'existing runner');
+  fs.writeFileSync(ledger + '.lock', 'existing runner', { mode: 0o600 });
   assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => pr), /ledger locked/);
   assert.equal(fs.readFileSync(ledger + '.lock', 'utf8'), 'existing runner');
 }));
