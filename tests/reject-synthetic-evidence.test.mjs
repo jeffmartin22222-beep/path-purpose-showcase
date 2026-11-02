@@ -77,3 +77,33 @@ test('traversal in public evidence reference is rejected', () => fixture(f => {
   f.save();
   assert.throws(() => rejectSyntheticEvidence(f.root), /Unsafe public evidence reference/);
 }));
+
+test('synthetic benchmark gaps and remediation are blocked', () => fixture(f => {
+  f.benchmark.gaps = ['Placeholder review evidence still pending'];
+  f.benchmark.remediation = ['Actual review required'];
+  f.save();
+  assert.throws(() => rejectSyntheticEvidence(f.root), /publication evidence blocked.*benchmark.gaps/);
+}));
+test('nested QA report metadata and device attestations cannot hide test-only markers', () => fixture(f => {
+  f.report.checks[0].deviceMetadata = { testerComment: 'Fixture iPad test only' };
+  f.save();
+  assert.throws(() => rejectSyntheticEvidence(f.root), /publication evidence blocked.*deviceMetadata/);
+}));
+test('synthetic QA approval metadata is blocked outside reviewer name', () => fixture(f => {
+  f.catalog.lessons[0].qa.technical.operatorNotes = 'Synthetic approval, not real QA';
+  f.save();
+  assert.throws(() => rejectSyntheticEvidence(f.root), /publication evidence blocked.*operatorNotes/);
+}));
+test('symlinked review evidence path is rejected', () => fixture(f => {
+  const target = path.join(f.root, 'evidence/demo/technical/iphone.txt');
+  fs.unlinkSync(target);
+  fs.symlinkSync(path.join(f.root, 'evidence/demo/benchmark.json'), target);
+  assert.throws(() => rejectSyntheticEvidence(f.root), /Symlink in public evidence reference/);
+}));
+test('symlinked evidence ancestor is rejected', () => fixture(f => {
+  const original = path.join(f.root, 'evidence/demo/technical');
+  const moved = path.join(f.root, 'evidence/demo/technical-real');
+  fs.renameSync(original, moved);
+  fs.symlinkSync(moved, original, 'dir');
+  assert.throws(() => rejectSyntheticEvidence(f.root), /Symlink in public evidence reference/);
+}));
