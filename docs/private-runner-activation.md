@@ -31,6 +31,14 @@ node scripts/check-private-runner-readiness.mjs
 
 It checks CLI presence, Node version, expected origin and branch, clean tree, token presence, ledger header/permissions/lock and Ed25519 public key. It does not print secret values or private paths. A successful result means **local prerequisites only**, not that transport, GitHub authentication, ledger durability, review evidence or a genuine signed handoff is verified.
 
+After the local check passes on the **actual private runner**, perform the opt-in, non-mutating remote authorization probe:
+
+```sh
+node scripts/check-private-runner-readiness.mjs --verify-remote
+```
+
+This additional check uses the runner's real `GH_TOKEN` for a GitHub API repository-permission read, confirms that the remote integration branch SHA equals the local checkout, and attempts a `git push --dry-run` to a random, never-created `feature/runner-auth-probe-*` ref. The command suppresses Git credential prompts and does not print secrets, remote command output or private file paths. A successful probe **does not create a branch or PR**, does not prove that an actual push will be authorized by every GitHub rule, and does not authenticate the producer, signer, QA evidence, storage durability or review. A failure must be resolved on the private runner, not by committing credentials or relaxing the gates. The normal local check remains offline and never contacts GitHub.
+
 ## 3. Demonstrate signed transport without publication
 
 1. Deliver the reviewed package from the private immutable source to the runner over an authenticated channel.
