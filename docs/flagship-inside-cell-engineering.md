@@ -26,3 +26,12 @@
 - Reconcile the private Curriculum Builder's latest Inside the Cell artifact **only through a verified, authorized signed transfer**. The automation handoffs do not themselves constitute a GitHub artifact transfer.
 
 **Release state:** no QA passes asserted, no 90/100 score asserted, no actual video or physical-device QA asserted. No merge or deploy.
+
+## Video checkpoint engineering increment — 2026-11-02 (development only)
+
+- Added `scripts/flagship-video-checkpoint.mjs`: pure, version- and SHA-256-bound single-clip/multiple-checkpoint state machine. Supports pause-at-boundary, question → feedback → optional replay/return → continue, seeking guard, no premature `ended` completion, and strict draft restore validation.
+- Added `scripts/flagship-video-adapter.mjs`: attaches the state machine to an `HTMLMediaElement`-like video interface, performs actual `pause()`/`currentTime`/`play()` effects, blocks native play while a checkpoint is open, and persists only non-authoritative tab-scoped UI state if the caller provides session storage. Restore never autoplays; disabled storage fails safely.
+- Added eight synthetic Node regression tests in `tests/flagship-video-checkpoint.test.mjs` and `tests/flagship-video-adapter.test.mjs` for multiple checkpoints, seeking, replay, stale version/hash, corrupted/forged draft, native-play guard and storage failure. **Local Node tests passed before commit; GitHub CI must independently confirm the exact head.**
+- The adapter does **not** yet run in the Showcase's visible lesson prototype. There is **no finished original video, caption track, transcript, checkpoint question UI, assessment evaluator, authenticated LMS persistence, physical Safari verification, or student-facing release**. Synthetic fake-media tests prove state transitions, not real video decoding, captions, touch/VoiceOver or instructional quality.
+- The adapter deliberately stores no student answers, grade, teacher keys or mastery evidence. `FEEDBACK_PRESENTED` is a UI event, **not** proof of correct response or reviewer signoff. A future LMS must authenticate and version-bind assessment outcomes server-side. Native media controls are not a security boundary.
+- **Next:** Integrate into a separate draft-only paged Teach → Do → Feedback → Next player with approved original short video/caption/transcript assets when available; add browser-level playback/checkpoint/refresh tests at 320/390/820 px, then physical iPad/iPhone and independent four-pass review. Do not add a lesson to `catalog/approved.json`, merge, or deploy.
