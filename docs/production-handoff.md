@@ -148,3 +148,10 @@ Before creating a draft review branch, the private staging entrypoint now fetche
 ### Private replay ledger filesystem permissions (2026-11-01)
 
 The staging ledger now fails closed if its parent directory is world-writable, or if the existing ledger/lock is hardlinked or has any group/other permission bits. Provision the authoritative ledger with mode **0600** and a non-world-writable, access-controlled parent directory on a durable filesystem supporting exclusive creation, atomic rename and directory fsync. A group-shared runner must use a deliberately managed service identity/ACL design rather than loosening the ledger file to 0660. Do not store this file under public CI workspaces or shared temporary folders. Synthetic tests cover 0644/0660/0666 ledger files, hardlinks and a world-writable parent. These checks do not provision the real runner, private storage, reviewer identity or trusted transport.
+
+
+### Detached handoff trust-file hardening (2026-11-01)
+
+The signed-handoff verifier now fails closed if the detached record or independently provisioned trusted producer public key is a symlink (including a symlinked parent), hardlinked file, group/world-writable file, empty file, or file larger than 16 KiB. The two inputs must be distinct regular files. The staging CLI now preserves the original resolved pathname rather than following symlinks before verification, so aliases cannot evade these checks. Regression tests cover symlink, hardlink, writable and same-file inputs.
+
+**Scope:** these checks protect local trust-input integrity on an isolated trusted runner; they do not provision the producer, establish custody of the trusted key, authenticate human QA, or complete any private transport. A file owned by the runner account can still be replaced by an attacker with equivalent account privileges. Provision immutable private artifacts, a dedicated least-privilege runner, short-lived GitHub credentials and the durable replay ledger before real staging. No lesson was approved, merged or deployed by this change.
