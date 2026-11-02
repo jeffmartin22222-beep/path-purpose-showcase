@@ -77,8 +77,10 @@ function main() {
     'Apply requires independently signed producer record and trusted public key');
   let signed = null;
   if (provenanceRequested) {
-    const recordPath = fs.realpathSync(recordFlags[0].slice('--signed-handoff-record='.length));
-    const keyPath = fs.realpathSync(keyFlags[0].slice('--trusted-producer-public-key='.length));
+    // Preserve the caller's actual path for verifier symlink/alias checks.
+    // Resolving to the target first would conceal an untrusted symlink.
+    const recordPath = path.resolve(recordFlags[0].slice('--signed-handoff-record='.length));
+    const keyPath = path.resolve(keyFlags[0].slice('--trusted-producer-public-key='.length));
     for (const privatePath of [recordPath, keyPath]) {
       requireThat(privatePath !== realRoot && !privatePath.startsWith(realRoot + path.sep) &&
         privatePath !== source && !privatePath.startsWith(source + path.sep),
