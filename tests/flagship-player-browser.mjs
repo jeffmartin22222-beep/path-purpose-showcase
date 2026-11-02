@@ -66,6 +66,24 @@ try{
     assert.match(await page.locator('#modelStatus').innerText(),/passed through/);
     await page.locator('#next').click();
     assert.match(await page.locator('#progress').innerText(),/Feedback/);
+    assert.equal(await page.locator('#next').isDisabled(),true,
+      'Feedback must require evidence-based explanation');
+    await page.locator('[data-evidence="approach"]').click();
+    assert.match(await page.locator('#evidenceFeedback').innerText(),/Look again/);
+    assert.equal(await page.locator('#next').isDisabled(),true,
+      'Unsupported explanation must not unlock Next');
+    await page.reload();
+    assert.match(await page.locator('#progress').innerText(),/Feedback/);
+    assert.equal(await page.locator('[data-evidence="approach"]').getAttribute('aria-pressed'),'true');
+    assert.match(await page.locator('#evidenceFeedback').innerText(),/Look again/);
+    await page.locator('[data-evidence="blocked"]').focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await page.locator('[data-evidence="blocked"]').getAttribute('aria-pressed'),'true');
+    assert.match(await page.locator('#evidenceFeedback').innerText(),/Supported/);
+    assert.equal(await page.locator('#next').isEnabled(),true);
+    await page.reload();
+    assert.match(await page.locator('#evidenceFeedback').innerText(),/Supported/);
+    assert.equal(await page.locator('#next').isEnabled(),true);
     await page.locator('#next').click();
     assert.match(await page.locator('#progress').innerText(),/Next/);
     assert.equal(await page.locator('#next').isVisible(),false);
@@ -100,6 +118,6 @@ try{
    }
   }finally{await browser.close()}
  }
- console.log('PASS: '+count+' Chromium/WebKit 320px/iPad draft-player scenarios; blocked/permitted fusion comparison, locked progression, reload persistence, wrong-media rejection.');
+ console.log('PASS: '+count+' Chromium/WebKit 320px/iPad draft-player scenarios; blocked/permitted fusion comparison, locked progression, reload persistence, wrong-media rejection, evidence explanation, feedback revision and keyboard/reload persistence.');
  console.log('NOT TESTED: actual original MP4 decode, physical iOS, VoiceOver, captions, independent four-pass QA.');
 }finally{await new Promise(resolve=>server.close(resolve))}
