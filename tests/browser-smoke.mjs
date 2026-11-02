@@ -41,9 +41,12 @@ try {
   const catalog = JSON.parse(fs.readFileSync(path.join(root, 'catalog/approved.json'), 'utf8'));
   await page.waitForFunction(expected => {
     const status = document.getElementById('catalog-status')?.textContent || '';
-    return expected === 0 ? status.includes('No lessons have passed all four QA reviews yet')
-      : status.includes(expected + ' approved lesson');
+    return status.includes('could not be loaded') ||
+      (expected === 0 ? status.includes('No lessons have passed all four QA reviews yet')
+        : status.includes(expected + ' approved lesson'));
   }, catalog.lessons.length);
+  assert.ok(!(await page.locator('#catalog-status').innerText()).includes('could not be loaded'),
+    'Showcase rejected catalog entries on phone');
   const cards = page.locator('#catalog-entries article');
   assert.equal(await cards.count(), catalog.lessons.length,
     'Showcase must render exactly the approved catalog entries');
@@ -84,9 +87,12 @@ try {
   await tabletPage.goto(base, { waitUntil: 'networkidle' });
   await tabletPage.waitForFunction(expected => {
     const status = document.getElementById('catalog-status')?.textContent || '';
-    return expected === 0 ? status.includes('No lessons have passed all four QA reviews yet')
-      : status.includes(expected + ' approved lesson');
+    return status.includes('could not be loaded') ||
+      (expected === 0 ? status.includes('No lessons have passed all four QA reviews yet')
+        : status.includes(expected + ' approved lesson'));
   }, catalog.lessons.length);
+  assert.ok(!(await tabletPage.locator('#catalog-status').innerText()).includes('could not be loaded'),
+    'Showcase rejected catalog entries on tablet');
   const tabletWidth = await tabletPage.evaluate(() =>
     [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
   assert.ok(tabletWidth[0] <= tabletWidth[1] + 1, 'Tablet horizontal overflow');
