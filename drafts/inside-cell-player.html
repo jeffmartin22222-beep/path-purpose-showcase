@@ -38,20 +38,21 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 </div>
 <p id="predictionFeedback" role="status" aria-live="polite">Choose a prediction before exploring. You can test it in the next screen.</p>
 </div>
-<div class="panel"><h2>Original moving-video proof</h2>
-<p class="muted small">Choose the exact silent 8-second producer proof from November 2. This local file never uploads. No narration, captions, or scientific signoff exists yet.</p>
+<div class="panel"><h2>Original Golgi-to-membrane video proof</h2>
+<p class="muted small">Optional local preview: choose the exact original silent 32-second producer MP4 from November 2. The file stays on this device and is never uploaded. This schematic proof has no approved narration, verified captions, or scientific signoff.</p>
+<p id="proofSequence" class="small"><strong>Text alternative for the 32-second proof:</strong> 0–15 s: a cargo-filled vesicle travels from a simplified Golgi region toward the cell membrane; cargo stays enclosed. 15–23 s: it docks, then a conceptual fusion pore opens. 23–32 s: cargo passes out through the open pore. The animation does not show ER protein synthesis or molecularly accurate fusion machinery.</p>
 <label for="proof">Local MP4 proof (optional for draft walkthrough)</label>
 <input id="proof" type="file" accept=".mp4,video/mp4">
 <p id="mediaStatus" role="status" aria-live="polite" class="small">Video not attached. Media acceptance blocked.</p>
-<video id="video" playsinline controls preload="metadata" aria-label="Original vesicle approach proof" hidden></video>
+<video id="video" playsinline controls preload="metadata" aria-label="Original Golgi-to-membrane exocytosis proof" aria-describedby="proofSequence" hidden></video>
 <div class="actions"><button id="play" hidden>Play proof</button></div>
 <div class="checkpoint" id="checkpoint" hidden>
-<p><strong>Prediction:</strong> Has cargo already exited when the vesicle approaches the membrane?</p>
-<div class="actions" id="answers"><button data-choice="no">No — pore not yet open</button><button data-choice="yes">Yes — approach releases cargo</button></div>
+<p id="checkpointPrompt"><strong>Prediction:</strong> Has cargo already exited before a fusion pore opens?</p>
+<div class="actions" id="answers"><button data-choice="no">No — cargo remains enclosed</button><button data-choice="yes">Yes — cargo has exited</button></div>
 <p id="clipFeedback" role="status" aria-live="polite" hidden></p>
 <div class="actions"><button id="replay" class="secondary" hidden>Rewatch</button><button id="continue" hidden>Continue video</button></div>
 </div></div>
-<p class="muted small">Text equivalent: A protein-filled vesicle moves toward a cell membrane. The 8-second proof stops before fusion or cargo release. Scale and molecular details are schematic.</p>
+<p class="muted small">The text sequence above is a draft visual description, not a synchronized caption track or a replacement for independent accessibility review.</p>
 </section>
 <section class="step" data-page="1" hidden>
 <div class="eyebrow">Do · 2 of 4</div><h1>Explore protein release</h1>
@@ -104,8 +105,20 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 </div>
 <script type="module">
 import {attachCheckpointVideo} from '../scripts/flagship-video-adapter.mjs';
-const $=id=>document.getElementById(id),hash='2be54741beee271dc0ddfa233691c1c0f1d8e917f5dd535508bdeae66f10f68c';
-const key='pp-inside-cell-paged-v2-'+hash.slice(0,16);
+const $=id=>document.getElementById(id);
+const lessonHash='2be54741beee271dc0ddfa233691c1c0f1d8e917f5dd535508bdeae66f10f68c';
+const proofHash='60f4e4a4427a0695807d84add4cc9d61c23a8306d9c616c6c15d756e35cb4d76';
+const key='pp-inside-cell-paged-v2-'+lessonHash.slice(0,16);
+const clipQuestions=[
+ {prompt:'At 15 seconds, the vesicle has approached the membrane but no pore has opened. Has cargo exited?',
+  no:'No — cargo is still enclosed',yes:'Yes — cargo already exited',
+  feedbackNo:'Supported: the cargo remains enclosed while the pore is closed.',
+  feedbackYes:'Look closely: approaching the membrane alone does not release cargo in this model.'},
+ {prompt:'At 23.5 seconds, a fusion pore is open. Can cargo now pass through this opening?',
+  no:'No — an open pore changes nothing',yes:'Yes — the pore allows passage',
+  feedbackNo:'Look again: the open pore provides a continuous route for cargo to pass in this conceptual model.',
+  feedbackYes:'Supported: the pore provides a route for cargo to pass. The model shows release after opening.'}
+];
 let page=0,stage=0,fusionBlocked=false,blockedObserved=false,prediction=null,evidenceChoice=null,explanation='',adapter=null,url=null;
 const predictionLabels={enclosed:'Cargo stays inside the vesicle',released:'Cargo leaves immediately'};
 const predictionResponses={
@@ -208,6 +221,9 @@ document.querySelectorAll('[data-evidence]').forEach(b=>b.onclick=()=>{
  evidenceChoice=b.dataset.evidence;paint();
 });
 function videoState(s){
+ const q=clipQuestions[Math.min(s.nextCheckpoint,clipQuestions.length-1)];
+ $('checkpointPrompt').textContent=q.prompt;
+ document.querySelectorAll('[data-choice]').forEach(b=>b.textContent=q[b.dataset.choice]);
  const active=['question','feedback','replay'].includes(s.phase);
  $('checkpoint').hidden=!active;$('answers').hidden=s.phase!=='question';
  $('clipFeedback').hidden=s.phase==='question';
@@ -216,10 +232,10 @@ function videoState(s){
  $('play').textContent=s.phase==='ready'?'Play proof':'Resume proof';
 }
 document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{
- if(!adapter||adapter.getState().phase!=='question')return;
- $('clipFeedback').textContent=b.dataset.choice==='no'?
- 'Right: approach is not fusion. No pore or cargo release is shown.':
- 'Not yet: approaching the membrane does not release enclosed cargo.';
+ const state=adapter?.getState();
+ if(!state||state.phase!=='question')return;
+ const q=clipQuestions[state.nextCheckpoint];
+ $('clipFeedback').textContent=b.dataset.choice==='no'?q.feedbackNo:q.feedbackYes;
  adapter.presentFeedback();
 });
 $('play').onclick=()=>adapter?.play();$('replay').onclick=()=>adapter?.replay();
@@ -233,16 +249,19 @@ $('proof').onchange=async e=>{
  $('mediaStatus').textContent='Verifying local original video hash…';
  try{
   const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await f.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('');
-  if(digest!==hash)throw new Error('File hash does not match the original producer proof');
+  if(digest!==proofHash)throw new Error('File hash does not match the original producer proof');
   url=URL.createObjectURL(f);v.src=url;
   await new Promise((resolve,reject)=>{v.onloadedmetadata=resolve;v.onerror=()=>reject(new Error('Cannot decode MP4'));v.load()});
-  if(!Number.isFinite(v.duration)||Math.abs(v.duration-8)>.25)throw new Error('Unexpected proof duration');
+  if(!Number.isFinite(v.duration)||Math.abs(v.duration-32)>.25)throw new Error('Unexpected proof duration');
   adapter=attachCheckpointVideo({video:v,
-   spec:{lessonId:'inside-the-cell',clipId:'vesicle-approach-proof',contentVersion:'0.0.0-dev',
-    contentSha256:hash,durationSeconds:v.duration,checkpoints:[{id:'approach-prediction',atSeconds:5}]},
-   storage:sessionStorage,storageKey:'pp-draft-proof-'+hash.slice(0,16),
+   spec:{lessonId:'inside-the-cell',clipId:'golgi-to-membrane-proof',contentVersion:'0.0.0-dev',
+    contentSha256:proofHash,durationSeconds:v.duration,checkpoints:[
+     {id:'closed-pore-prediction',atSeconds:15},
+     {id:'open-pore-prediction',atSeconds:23.5}
+    ]},
+   storage:sessionStorage,storageKey:'pp-draft-proof-'+proofHash.slice(0,16),
    onState:videoState,onPlaybackError:()=>{$('mediaStatus').textContent='Playback failed: check codec support.'}});
-  v.hidden=false;$('mediaStatus').textContent='Verified silent proof loaded. Checkpoint at 5 seconds. Still unapproved.';
+  v.hidden=false;$('mediaStatus').textContent='Original digest matched; 32-second metadata loaded. Checkpoints at 15 and 23.5 seconds. Playback and QA still unverified.';
  }catch(err){$('mediaStatus').textContent='Media unavailable: '+err.message;v.hidden=true;if(url){URL.revokeObjectURL(url);url=null}}
 };
 window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
