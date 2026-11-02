@@ -58,6 +58,17 @@ try {
   writeCatalog();
   console.log('PASS: public catalog hides lessons missing benchmark metadata.');
 
+  // A bare "passed" flag cannot stand in for a reviewer's evidence references.
+  const technicalEvidence = syntheticLesson.qa.technical.evidence;
+  syntheticLesson.qa.technical.evidence = [];
+  writeCatalog();
+  const missingQaEvidence = run();
+  assert.notEqual(missingQaEvidence.status, 0, 'Missing QA evidence must hide the lesson');
+  assert.match(missingQaEvidence.stderr, /Showcase rejected catalog entries/);
+  syntheticLesson.qa.technical.evidence = technicalEvidence;
+  writeCatalog();
+  console.log('PASS: public catalog hides lessons with missing four-pass QA evidence metadata.');
+
 
   fs.writeFileSync(lessonPath, html.replace('</body>',
     '<img src="https://example.invalid/never-fetch.png" alt="External dependency"></body>'));
