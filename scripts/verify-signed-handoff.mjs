@@ -17,20 +17,40 @@ export function canonicalHandoffPayload(payload) {
 // Reject symlinks (including symlinked parent paths), hardlinks, group/world
 // writable files and oversized files before reading either input. A symlink
 // could otherwise redirect the trusted key to attacker-controlled material.
-function trustedInputFile(candidate, label) {
+// Read from a pinned descriptor, not by reopening the pathname after lstat.
+// A producer record or trusted key replaced between checking and reading must
+// never be accepted. The isolated private runner still needs exclusive custody
+// of its trust directory; this is a local filesystem defense-in-depth check.
+function readTrustedInput(candidate, label) {
   const absolute = path.resolve(candidate);
-  const stat = fs.lstatSync(absolute);
-  assert(stat.isFile() && stat.nlink === 1 && (stat.mode & 0o022) === 0 &&
-    fs.realpathSync(absolute) === absolute && stat.size > 0 && stat.size <= 16384,
-    'Unsafe ' + label + ': require an independent non-symlink, non-writable regular file');
-  return absolute;
+  const unsafe = 'Unsafe ' + label + ': require a stable independent non-symlink, non-writable regular file';
+  const valid = stat => stat.isFile() && stat.nlink === 1n &&
+    (stat.mode & 0o022n) === 0n && stat.size > 0n && stat.size <= 16384n;
+  const same = (a, b) => a.dev === b.dev && a.ino === b.ino &&
+    a.size === b.size && a.mtimeNs === b.mtimeNs && a.ctimeNs === b.ctimeNs;
+  assert(typeof fs.constants.O_NOFOLLOW === 'number', unsafe);
+  const before = fs.lstatSync(absolute, { bigint: true });
+  assert(valid(before) && fs.realpathSync(absolute) === absolute, unsafe);
+  const fd = fs.openSync(absolute, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  try {
+    const opened = fs.fstatSync(fd, { bigint: true });
+    assert(valid(opened) && same(before, opened), unsafe);
+    const bytes = fs.readFileSync(fd);
+    const after = fs.fstatSync(fd, { bigint: true });
+    const current = fs.lstatSync(absolute, { bigint: true });
+    assert(valid(after) && valid(current) && same(before, after) &&
+      same(before, current) && bytes.length === Number(before.size), unsafe);
+    return { absolute, bytes };
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 export function verifySignedHandoff(recordPath, publicKeyPath, expected, now = new Date()) {
-  recordPath = trustedInputFile(recordPath, 'signed handoff record');
-  publicKeyPath = trustedInputFile(publicKeyPath, 'trusted producer public key');
-  assert(recordPath !== publicKeyPath, 'Record and trusted public key must be separate files');
-  const record = JSON.parse(fs.readFileSync(recordPath, 'utf8'));
+  const recordInput = readTrustedInput(recordPath, 'signed handoff record');
+  const keyInput = readTrustedInput(publicKeyPath, 'trusted producer public key');
+  assert(recordInput.absolute !== keyInput.absolute, 'Record and trusted public key must be separate files');
+  const record = JSON.parse(recordInput.bytes.toString('utf8'));
   assert(JSON.stringify(ownFields(record)) === JSON.stringify(['payload', 'signature']), 'Invalid signed handoff envelope');
   const payload = record.payload;
   const message = canonicalHandoffPayload(payload);
@@ -58,7 +78,7 @@ export function verifySignedHandoff(recordPath, publicKeyPath, expected, now = n
   const signature = Buffer.from(record.signature, 'base64');
   assert(signature.toString('base64') === record.signature && signature.length === 64,
     'Invalid Ed25519 signature bytes');
-  const publicKey = crypto.createPublicKey(fs.readFileSync(publicKeyPath));
+  const publicKey = crypto.createPublicKey(keyInput.bytes);
   assert(publicKey.asymmetricKeyType === 'ed25519', 'Trusted producer key must be Ed25519');
   assert(crypto.verify(null, Buffer.from(message, 'utf8'), publicKey, signature),
     'Invalid signed producer handoff signature');
