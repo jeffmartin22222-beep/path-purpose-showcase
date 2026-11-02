@@ -66,6 +66,16 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <div class="eyebrow">Feedback · 3 of 4</div><h1>What did the model show?</h1>
 <div class="panel"><p>You compared two conditions: blocking fusion kept cargo inside even after approach. Allowing fusion let a pore open and cargo pass through. This is evidence that approach alone is insufficient.</p>
 <p>The model illustrates event order. It does not simulate real membrane proteins or rates.</p>
+<div class="checkpoint" role="group" aria-labelledby="evidenceQuestion">
+<h2 id="evidenceQuestion">Which observation is evidence that fusion is needed for cargo release?</h2>
+<p class="muted small">Choose the observation supported by your two trials. You can change your answer after reading the feedback.</p>
+<div class="actions" id="evidenceChoices">
+<button class="secondary" data-evidence="blocked" aria-pressed="false">Cargo stayed inside when fusion was blocked, but exited after a pore opened.</button>
+<button class="secondary" data-evidence="approach" aria-pressed="false">Cargo exited as soon as the vesicle approached the membrane.</button>
+<button class="secondary" data-evidence="both" aria-pressed="false">Cargo exited in both trials, even without an open pore.</button>
+</div>
+<p id="evidenceFeedback" role="status" aria-live="polite">Select an observation to see feedback and continue.</p>
+</div>
 <button id="retry" class="secondary">Try the experiment again</button></div>
 </section>
 <section class="step" data-page="3" hidden>
@@ -81,8 +91,13 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 import {attachCheckpointVideo} from '../scripts/flagship-video-adapter.mjs';
 const $=id=>document.getElementById(id),hash='2be54741beee271dc0ddfa233691c1c0f1d8e917f5dd535508bdeae66f10f68c';
 const key='pp-inside-cell-paged-v2-'+hash.slice(0,16);
-let page=0,stage=0,fusionBlocked=false,blockedObserved=false,adapter=null,url=null;
-function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusionBlocked,blockedObserved}))}catch{}}
+let page=0,stage=0,fusionBlocked=false,blockedObserved=false,evidenceChoice=null,adapter=null,url=null;
+const evidenceResponses={
+ blocked:'Supported: blocking fusion kept cargo enclosed after approach. When fusion was permitted, a pore opened and cargo exited. This comparison supports the need for an open pore in this model.',
+ approach:'Look again: in the blocked trial the vesicle approached, but cargo stayed enclosed. Approach alone did not release it. Compare that result with the open-pore trial.',
+ both:'Check the blocked trial: cargo stayed inside when no pore could form. Only the permitted-fusion trial showed cargo leaving through an open pore.'
+};
+function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusionBlocked,blockedObserved,evidenceChoice}))}catch{}}
 function paintModel(){
  $('vesicle').setAttribute('transform',stage===0?'translate(0 8)':'translate(0 -27)');
  $('pore').hidden=stage<2;$('released').hidden=stage<3;$('cargo').hidden=stage===3;
@@ -104,14 +119,24 @@ function paintModel(){
  'Stage 3: Protein cargo has passed through the pore.'
  ][stage];save();
 }
+function paintEvidence(){
+ document.querySelectorAll('[data-evidence]').forEach(b=>{
+  b.setAttribute('aria-pressed',String(b.dataset.evidence===evidenceChoice));
+ });
+ $('evidenceFeedback').textContent=evidenceChoice
+  ?evidenceResponses[evidenceChoice]
+  :'Select an observation to see feedback and continue.';
+}
 function paint(){
+ paintEvidence();
  document.querySelectorAll('[data-page]').forEach(s=>s.hidden=Number(s.dataset.page)!==page);
  $('progress').textContent=['Teach','Do','Feedback','Next'][page]+' · '+(page+1)+' of 4';
- $('back').disabled=page===0;$('next').hidden=page===3;$('next').disabled=page===1&&(stage!==3||!blockedObserved);
+ $('back').disabled=page===0;$('next').hidden=page===3;
+ $('next').disabled=(page===1&&(stage!==3||!blockedObserved))||(page===2&&!evidenceChoice);
  if(page!==0)$('video').pause();$('main').scrollTop=0;save();
 }
 function go(n){page=n;paint()}
-$('next').onclick=()=>{if(page<3&&(page!==1||(stage===3&&blockedObserved)))go(page+1)};
+$('next').onclick=()=>{if(page<3&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||evidenceChoice))go(page+1)};
 $('back').onclick=()=>{if(page>0)go(page-1)};
 $('dock').onclick=()=>{if(stage===0){stage=1;paintModel();paint()}};
 $('fusionToggle').onclick=()=>{
@@ -124,9 +149,13 @@ $('blockedTest').onclick=()=>{
 };
 $('fuse').onclick=()=>{if(stage===1&&!fusionBlocked){stage=2;paintModel();paint()}};
 $('release').onclick=()=>{if(stage===2){stage=3;paintModel();paint()}};
-$('reset').onclick=()=>{stage=0;fusionBlocked=false;paintModel();paint()};
-$('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;paintModel();go(1)};
-$('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;paintModel();go(0)};
+$('reset').onclick=()=>{stage=0;fusionBlocked=false;evidenceChoice=null;paintModel();paint()};
+$('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;evidenceChoice=null;paintModel();go(1)};
+$('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;evidenceChoice=null;paintModel();go(0)};
+document.querySelectorAll('[data-evidence]').forEach(b=>b.onclick=()=>{
+ if(page!==2||stage!==3||!blockedObserved)return;
+ evidenceChoice=b.dataset.evidence;paint();
+});
 function videoState(s){
  const active=['question','feedback','replay'].includes(s.phase);
  $('checkpoint').hidden=!active;$('answers').hidden=s.phase!=='question';
@@ -167,6 +196,11 @@ $('proof').onchange=async e=>{
 };
 window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
 try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
- if(d&&Number.isInteger(d.page)&&d.page>=0&&d.page<=3&&Number.isInteger(d.stage)&&d.stage>=0&&d.stage<=3&&typeof d.fusionBlocked==='boolean'&&typeof d.blockedObserved==='boolean'&&!(d.stage>1&&d.fusionBlocked)&&!(d.page>1&&(d.stage!==3||!d.blockedObserved))){page=d.page;stage=d.stage;fusionBlocked=d.fusionBlocked;blockedObserved=d.blockedObserved}}catch{}
+ if(d&&Number.isInteger(d.page)&&d.page>=0&&d.page<=3&&Number.isInteger(d.stage)&&d.stage>=0&&d.stage<=3&&typeof d.fusionBlocked==='boolean'&&typeof d.blockedObserved==='boolean'&&!(d.stage>1&&d.fusionBlocked)&&!(d.page>1&&(d.stage!==3||!d.blockedObserved))&&
+ (d.evidenceChoice===undefined||d.evidenceChoice===null||Object.hasOwn(evidenceResponses,d.evidenceChoice))){
+ page=d.page===3&&!d.evidenceChoice?2:d.page;
+ stage=d.stage;fusionBlocked=d.fusionBlocked;blockedObserved=d.blockedObserved;
+ evidenceChoice=d.evidenceChoice||null;
+ }}catch{}
 paintModel();paint();
 </script></body></html>
