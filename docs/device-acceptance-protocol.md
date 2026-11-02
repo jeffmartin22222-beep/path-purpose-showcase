@@ -47,3 +47,14 @@ independently reviewable redacted screenshots and actual test steps separately.
 These strings are **self-reported** and do not authenticate a physical device,
 tester, OS, browser, screenshot, or accessibility result. CI Chromium remains
 precautionary browser coverage, not physical Safari evidence.
+
+### Additional browser-engine regression coverage (2026-11-02)
+
+Development CI now runs the mobile/tablet Showcase and every approved lesson in both
+**Chromium and Linux Playwright WebKit**. The temporary nonempty-catalog fixture is
+also exercised in both engines; negative network/catalog safety fixtures continue
+in Chromium. This can detect some engine-specific layout, interaction and
+resource-loading regressions earlier. **Linux WebKit is not iOS Safari**, an
+iPad simulator, VoiceOver, or a physical device; it cannot validate hardware
+video decoding, iPadOS touch behavior, real captions, audio or accessibility.
+Keep the physical iPhone/iPad Safari and human review requirements unchanged.
