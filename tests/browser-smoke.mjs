@@ -1,11 +1,17 @@
 #!/usr/bin/env node
-// Browser-level smoke checks run in Chromium emulation. NOT a substitute for physical iOS Safari/iPad tests.
+// Browser-level smoke checks run in Chromium or Linux WebKit emulation.
+// Neither engine proves physical iPhone/iPad Safari or screen-reader acceptance.
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
+
+const browserEngine = process.env.SHOWCASE_BROWSER || 'chromium';
+if (!['chromium', 'webkit'].includes(browserEngine)) {
+  throw new Error('Unsupported SHOWCASE_BROWSER (expected chromium or webkit)');
+}
 
 // SHOWCASE_TEST_ROOT is used only by the temporary synthetic browser fixture runner.
 const root = process.env.SHOWCASE_TEST_ROOT ? path.resolve(process.env.SHOWCASE_TEST_ROOT) :
@@ -26,7 +32,9 @@ const server = http.createServer((req, res) => {
 await new Promise((resolve, reject) => server.listen(0, '127.0.0.1', err => err ? reject(err) : resolve()));
 let browser;
 try {
-  browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] });
+  browser = await (browserEngine === 'webkit' ? webkit : chromium).launch(
+    browserEngine === 'chromium' ? { headless: true, args: ['--no-sandbox'] } : { headless: true }
+  );
   const base = 'http://127.0.0.1:' + server.address().port;
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 }, deviceScaleFactor: 3,
@@ -170,9 +178,10 @@ try {
   }
   await tablet.close();
   await context.close();
-  console.log('PASS: Chromium emulated phone/tablet layout, catalog rendering, and interactive behavior.');
+  console.log('PASS: ' + browserEngine + ' emulated phone/tablet layout, catalog rendering, and interactive behavior.');
   console.log('Approved lesson browser checks: ' + catalog.lessons.length +
     ' lesson(s) on phone and tablet. Empty catalog means no lesson runtime was exercised.');
+  console.log('Linux browser emulation does not prove physical iOS Safari behavior.');
   console.log('Physical iPhone/iPad Safari, video playback, captions and screen-reader QA remain REQUIRED.');
 } finally {
   await browser?.close();
