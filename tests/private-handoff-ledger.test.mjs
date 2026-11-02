@@ -17,7 +17,8 @@ function fixture(fn) {
   const ledger = path.join(dir, 'replay.json');
   // Synthetic test fixture only. Production initialization requires a
   // deliberate owner-controlled bootstrap, never an implicit staging reset.
-  fs.writeFileSync(ledger, JSON.stringify({ schemaVersion: 1, records: [] }));
+  fs.writeFileSync(ledger, JSON.stringify({ schemaVersion: 1, records: [] }), { mode: 0o600 });
+  fs.chmodSync(ledger, 0o600);
   try { fn(ledger); }
   finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
@@ -119,4 +120,42 @@ test('deleted replay ledger fails closed rather than silently resetting history'
   assert.equal(called, false);
   assert.equal(fs.existsSync(ledger), false);
   assert.equal(fs.existsSync(ledger + '.lock'), false);
+}));
+
+test('private replay ledger rejects group/world-readable or writable permissions', () => {
+  for (const mode of [0o644, 0o660, 0o666]) fixture(ledger => {
+    fs.chmodSync(ledger, mode);
+    let called = false;
+    assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => {
+      called = true;
+      return pr;
+    }), /unsafe links or permissions/);
+    assert.equal(called, false);
+    assert.equal(fs.existsSync(ledger + '.lock'), false);
+  });
+});
+test('hardlinked replay ledger fails closed without reserving a handoff', () => fixture(ledger => {
+  const alias = path.join(path.dirname(ledger), 'alias.json');
+  fs.linkSync(ledger, alias);
+  let called = false;
+  assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => {
+    called = true;
+    return pr;
+  }), /unsafe links or permissions/);
+  assert.equal(called, false);
+  assert.equal(JSON.parse(fs.readFileSync(ledger)).records.length, 0);
+}));
+test('world-writable ledger directory is rejected before staging', () => fixture(ledger => {
+  const dir = path.dirname(ledger);
+  fs.chmodSync(dir, 0o777);
+  try {
+    let called = false;
+    assert.throws(() => withPrivateHandoffLedger(ledger, handoff, () => {
+      called = true;
+      return pr;
+    }), /must not be world-writable/);
+    assert.equal(called, false);
+  } finally {
+    fs.chmodSync(dir, 0o700);
+  }
 }));
