@@ -1,0 +1,49 @@
+# Trusted, read-only guard for producer review PRs.
+# pull_request_target loads this workflow from the BASE branch, not from a
+# potentially modified PR head. Never checkout or execute PR-head code here.
+name: Trusted curriculum review boundary
+on:
+  pull_request_target:
+    branches: [feature/qa-gated-publishing]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+permissions:
+  contents: read
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout trusted integration-base validator only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Use pinned Node major
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch immutable review commits without executing their contents
+        shell: bash
+        env:
+          PP_REVIEW_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PP_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PP_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "refs/heads/${PP_REVIEW_BASE_REF}"
+          actual_base="$(git rev-parse FETCH_HEAD)"
+          if [[ "$actual_base" != "$PP_REVIEW_BASE_SHA" ]]; then
+            echo "::error::Integration base advanced; refresh review PR and rerun trusted checks."
+            exit 1
+          fi
+          git fetch --no-tags origin "$PP_REVIEW_HEAD_SHA"
+          git cat-file -e "${PP_REVIEW_HEAD_SHA}^{commit}"
+      - name: Enforce content-only single-commit review boundary from trusted base
+        env:
+          PP_REVIEW_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PP_REVIEW_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PP_REVIEW_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PP_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PP_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/validate-review-pr-diff.mjs
