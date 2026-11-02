@@ -25,7 +25,7 @@ export function safeImportSource(sourceRoot, relative) {
       throw new Error('Non-directory private import source ancestor: ' + relative);
     }
     if (i === segments.length - 1 && (!stat.isFile() || stat.nlink !== 1)) {
-      throw new Error('Private import source must be an independent regular file: ' + relative);
+      throw new Error('Source file is not an independent regular file: ' + relative);
     }
   }
   if (fs.realpathSync(candidate) !== candidate || !candidate.startsWith(root + path.sep)) {
