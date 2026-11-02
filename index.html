@@ -33,8 +33,22 @@ a:focus-visible{outline:3px solid #fff;outline-offset:3px}
       if(!lesson||typeof lesson.id!=='string'||!(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).test(lesson.id))return false;
       if(lesson.entry!=='lessons/'+lesson.id+'/index.html')return false;
       if(!['title','grade','subject','course','unit'].every(key=>typeof lesson[key]==='string'&&lesson[key].trim()))return false;
-      if(lesson.rights?.status!=='cleared')return false;
-      return ['content','pedagogy','technical','experience'].every(gate=>lesson.qa?.[gate]?.status==='passed');
+      // Browser-side defense in depth. CI validates hashes, evidence truth still needs human audit.
+      const digest=/^[a-f0-9]{64}$/;
+      if(typeof lesson.version!=='string'||!lesson.version.trim()||
+         !digest.test(lesson.sha256||'')||!digest.test(lesson.packageSha256||''))return false;
+      if(lesson.rights?.status!=='cleared'||
+         !['original','licensed'].includes(lesson.rights?.basis)||
+         !lesson.rights?.reviewedBy||!lesson.rights?.reviewedAt)return false;
+      if(lesson.benchmark?.path!=='evidence/'+lesson.id+'/benchmark.json'||
+         !digest.test(lesson.benchmark.sha256||''))return false;
+      return ['content','pedagogy','technical','experience'].every(gate=>{
+        const review=lesson.qa?.[gate];
+        return review?.status==='passed'&&
+          typeof review.reviewedBy==='string'&&review.reviewedBy.trim()&&
+          typeof review.reviewedAt==='string'&&review.reviewedAt.trim()&&
+          Array.isArray(review.evidence)&&review.evidence.length>0;
+      });
     });
     if(lessons.length!==catalog.lessons.length)throw new Error('Catalog contains invalid or unapproved entries');
     if(!lessons.length){status.textContent='No lessons have passed all four QA reviews yet. The prototype above remains available to explore.';return}
