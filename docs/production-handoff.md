@@ -196,3 +196,25 @@ volume can still defeat assumptions outside this module. Provision a trusted
 producer identity and immutable private storage before attempting a real
 signed producer-to-draft-PR transfer. Keep public catalog empty until four
 actual QA passes, benchmark signoff, physical iOS review and owner authorization.
+
+### Synthetic fixture publication guard — 2026-11-02
+
+The public catalog CI and reviewed-package `--apply` paths now run
+`scripts/reject-synthetic-evidence.mjs`. It rejects explicit synthetic,
+fixture, test-only, placeholder-review or fabricated-approval markers in
+rights/QA reviewer metadata, QA check notes, text-based QA artifacts and
+per-lesson benchmark review metadata. It runs **before** the private staging
+replay ledger reserves an artifact, so an accidentally selected synthetic
+package cannot consume a real source/version slot. Offline dry runs remain
+available for synthetic security regression fixtures, but such fixtures cannot
+be imported to a public review branch. The check intentionally does not scan
+student-facing lesson text for words such as `synthetic`, which may be valid
+instructional vocabulary. Seven isolated regression tests cover rejection,
+normal metadata and path safety.
+
+**Limit:** this is a high-signal test-fixture exclusion rule, **not** reviewer
+authentication, evidence truth verification, or a substitute for independent
+human review. A maliciously relabeled fake report can still evade keyword
+checks; trusted reviewer identity, provenance, rights checks, physical iOS
+verification, private transport and owner authorization remain mandatory.
+No production producer connection is implied.
