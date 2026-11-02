@@ -48,6 +48,8 @@ jobs:
         run: node --check scripts/read-private-signing-key.mjs
       - name: Check private replay ledger syntax
         run: node --check scripts/private-handoff-ledger.mjs
+      - name: Check read-only private runner readiness syntax
+        run: node --check scripts/check-private-runner-readiness.mjs
       - name: Check explicit private ledger bootstrap syntax
         run: node --check scripts/init-private-handoff-ledger.mjs
       - name: Check competitive benchmark validator syntax
