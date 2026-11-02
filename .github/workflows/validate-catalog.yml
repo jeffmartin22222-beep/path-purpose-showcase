@@ -43,6 +43,8 @@ jobs:
         run: node --test tests/*.test.mjs
       - name: Verify approved catalog and evidence integrity
         run: node scripts/validate-catalog.mjs
+      - name: Reject synthetic review evidence in public catalog
+        run: node scripts/reject-synthetic-evidence.mjs
       - name: Install Chromium for browser smoke tests
         run: |
           npm install --no-save --no-package-lock playwright@1.56.1
