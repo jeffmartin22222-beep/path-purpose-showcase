@@ -59,7 +59,7 @@ export function validateReviewDiff({ headRef, baseRef, changes }) {
  * every previously approved lesson record unchanged.
  */
 export function validateReviewCatalogDelta({ headRef, baseCatalog, headCatalog }) {
-  const match = /^feature\\/review-([a-z0-9]+(?:-[a-z0-9]+)*)-([a-f0-9]{12})$/.exec(headRef || '');
+  const match = /^feature\/review-([a-z0-9]+(?:-[a-z0-9]+)*)-([a-f0-9]{12})$/.exec(headRef || '');
   requireThat(match, 'Review PR must use the signed-package review branch format');
   requireThat(baseCatalog && headCatalog &&
     baseCatalog.schemaVersion === '1.0.0' && headCatalog.schemaVersion === baseCatalog.schemaVersion &&
