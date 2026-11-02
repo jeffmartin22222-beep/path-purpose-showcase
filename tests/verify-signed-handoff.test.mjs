@@ -89,3 +89,45 @@ test('group/world writable handoff trust inputs fail closed', () => fixture(f =>
 test('signed record and trusted key cannot be the same file', () => fixture(f => {
   assert.throws(() => verifySignedHandoff(f.record, f.record, f.expected, f.now), /separate files/);
 }));
+
+
+test('replacement of signed record during descriptor read fails closed', () => fixture(f => {
+  const original = fs.readFileSync;
+  const originalBytes = original(f.record);
+  let swapped = false;
+  try {
+    fs.readFileSync = function (target, ...args) {
+      if (typeof target === 'number' && !swapped) {
+        swapped = true;
+        fs.renameSync(f.record, path.join(f.dir, 'old-record.json'));
+        fs.writeFileSync(f.record, originalBytes);
+      }
+      return original.call(fs, target, ...args);
+    };
+    assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now),
+      /Unsafe signed handoff record/);
+    assert.equal(swapped, true);
+  } finally {
+    fs.readFileSync = original;
+  }
+}));
+
+test('replacement of trusted public key during descriptor read fails closed', () => fixture(f => {
+  const original = fs.readFileSync;
+  const originalBytes = original(f.pub);
+  let descriptorReads = 0;
+  try {
+    fs.readFileSync = function (target, ...args) {
+      if (typeof target === 'number' && ++descriptorReads === 2) {
+        fs.renameSync(f.pub, path.join(f.dir, 'old-public.pem'));
+        fs.writeFileSync(f.pub, originalBytes);
+      }
+      return original.call(fs, target, ...args);
+    };
+    assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now),
+      /Unsafe trusted producer public key/);
+    assert.equal(descriptorReads, 2);
+  } finally {
+    fs.readFileSync = original;
+  }
+}));
