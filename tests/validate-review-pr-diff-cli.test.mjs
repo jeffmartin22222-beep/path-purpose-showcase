@@ -21,12 +21,12 @@ test('CLI compares actual Git trees, accepts content-only changes and blocks wor
     git(dir, 'init', '-q');
     git(dir, 'config', 'user.email', 'test@example.invalid');
     git(dir, 'config', 'user.name', 'Synthetic Test');
-    write(dir, 'catalog/approved.json', '{"lessons":[]}\n');
+    write(dir, 'catalog/approved.json', JSON.stringify({ schemaVersion: '1.0.0', lessons: [] }) + '\n');
     git(dir, 'add', '.');
     git(dir, 'commit', '-qm', 'base');
     const baseSha = git(dir, 'rev-parse', 'HEAD');
     git(dir, 'switch', '-qc', 'feature/review-inside-the-cell-012345abcdef');
-    write(dir, 'catalog/approved.json', '{"lessons":[{"id":"inside-the-cell"}]}\n');
+    write(dir, 'catalog/approved.json', JSON.stringify({ schemaVersion: '1.0.0', lessons: [ { id: 'inside-the-cell', version: '1.1.0', packageSha256: '012345abcdef' + '0'.repeat(52) } ] }) + '\n');
     write(dir, 'lessons/inside-the-cell/index.html', '<main>Original synthetic test</main>\n');
     write(dir, 'evidence/inside-the-cell/qa.json', '{"fixture":true}\n');
     git(dir, 'add', '.');
