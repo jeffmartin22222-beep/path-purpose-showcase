@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inside the Cell — draft student player</title>
+<style>
+:root{font-family:system-ui,sans-serif;background:#071827;color:#effaff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}
+#app{max-width:900px;margin:auto;height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+header,footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:#0b2231;border-color:#34566a}
+header{border-bottom:1px solid #34566a}footer{border-top:1px solid #34566a}
+.brand{font-weight:850;color:#81e9dc}.tag{font-size:.72rem;color:#ffd895;border:1px solid #987748;border-radius:99px;padding:5px 8px}
+main{min-height:0;overflow:auto;padding:12px 14px}.step{max-width:690px;margin:auto}.step[hidden],[hidden]{display:none!important}
+h1{font-size:clamp(1.35rem,5vw,2rem);margin:6px 0 9px}h2{font-size:1.08rem;margin:7px 0}p{line-height:1.36;margin:8px 0}.muted{color:#b4cbd6}.small{font-size:.8rem}.eyebrow{color:#80e6da;font-size:.8rem}
+.panel{background:#112e40;border:1px solid #385a6c;border-radius:16px;padding:13px;margin:10px 0}
+button{font:inherit;font-weight:750;min-height:44px;border:0;border-radius:12px;padding:9px 14px;background:#80e6da;color:#092633;cursor:pointer}
+button.secondary{background:#275064;color:#fff}button:disabled{opacity:.43;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:3px solid white;outline-offset:2px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}.actions button{flex:1 1 105px}
+input[type=file]{max-width:100%;font-size:.8rem}video{display:block;width:100%;max-height:26dvh;background:#000;border-radius:10px}
+svg{width:100%;height:155px;background:#092333;border:1px solid #365e70;border-radius:12px}
+svg text{font-size:12px;fill:white;font-family:system-ui}
+.checkpoint{border:2px solid #80e6da;border-radius:12px;padding:9px;margin-top:8px}
+#progress{color:#bdd2dc;font-size:.78rem}#next{min-width:105px}
+@media(max-width:380px){header,footer{padding:8px 10px}main{padding:9px 10px}.panel{padding:9px;margin:7px 0}svg{height:125px}p{margin:6px 0}.tag{font-size:.62rem}}
+@media(max-height:610px){svg{height:112px}video{max-height:22dvh}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body><div id="app">
+<header><span class="brand">PATH + PURPOSE</span><span class="tag">UNAPPROVED · DEVELOPMENT ONLY</span></header>
+<main id="main">
+<section class="step" data-page="0">
+<div class="eyebrow">Teach · 1 of 4</div><h1>Inside the Cell: How does cargo leave?</h1>
+<p>Proteins can travel inside a membrane-bound vesicle. Approaching the plasma membrane does not release cargo: an open fusion pore is needed.</p>
+<div class="panel"><h2>Original moving-video proof</h2>
+<p class="muted small">Choose the exact silent 8-second producer proof from November 2. This local file never uploads. No narration, captions, or scientific signoff exists yet.</p>
+<label for="proof">Local MP4 proof (optional for draft walkthrough)</label>
+<input id="proof" type="file" accept=".mp4,video/mp4">
+<p id="mediaStatus" role="status" aria-live="polite" class="small">Video not attached. Media acceptance blocked.</p>
+<video id="video" playsinline controls preload="metadata" aria-label="Original vesicle approach proof" hidden></video>
+<div class="actions"><button id="play" hidden>Play proof</button></div>
+<div class="checkpoint" id="checkpoint" hidden>
+<p><strong>Prediction:</strong> Has cargo already exited when the vesicle approaches the membrane?</p>
+<div class="actions" id="answers"><button data-choice="no">No — pore not yet open</button><button data-choice="yes">Yes — approach releases cargo</button></div>
+<p id="clipFeedback" role="status" aria-live="polite" hidden></p>
+<div class="actions"><button id="replay" class="secondary" hidden>Rewatch</button><button id="continue" hidden>Continue video</button></div>
+</div></div>
+<p class="muted small">Text equivalent: A protein-filled vesicle moves toward a cell membrane. The 8-second proof stops before fusion or cargo release. Scale and molecular details are schematic.</p>
+</section>
+<section class="step" data-page="1" hidden>
+<div class="eyebrow">Do · 2 of 4</div><h1>Explore protein release</h1>
+<p>Control a simplified exocytosis sequence. Notice exactly when cargo can exit.</p>
+<div class="panel">
+<svg id="diagram" viewBox="0 0 340 155" role="img" aria-label="Conceptual exocytosis: vesicle, cell membrane, pore and protein cargo">
+<rect width="340" height="50" y="105" fill="#194b60"/><path d="M0 105 H340" stroke="#77e2d3" stroke-width="8"/>
+<g id="vesicle" transform="translate(0 -22)"><circle cx="170" cy="60" r="34" fill="#28485e" stroke="#f1b56f" stroke-width="6"/>
+<g id="cargo" fill="#ebc9ff"><circle cx="156" cy="54" r="5"/><circle cx="180" cy="55" r="5"/><circle cx="170" cy="73" r="5"/></g></g>
+<rect id="pore" x="156" y="99" width="28" height="14" fill="#092333" hidden/>
+<g id="released" fill="#ebc9ff" hidden><circle cx="141" cy="126" r="5"/><circle cx="172" cy="139" r="5"/><circle cx="199" cy="126" r="5"/></g>
+<text x="10" y="20">Outside cell</text><text x="10" y="146">Cell interior</text></svg>
+<p id="modelStatus" role="status" aria-live="polite"></p>
+<div class="actions"><button id="dock">1. Approach</button><button id="fuse" disabled>2. Open pore</button><button id="release" disabled>3. Release</button></div>
+<div class="actions"><button id="reset" class="secondary">Reset experiment</button></div></div>
+<p class="muted small">This models event order, not lipid physics, kinetics, or the molecular machinery of membrane fusion. No special materials or partners are needed.</p>
+</section>
+<section class="step" data-page="2" hidden>
+<div class="eyebrow">Feedback · 3 of 4</div><h1>What did the model show?</h1>
+<div class="panel"><p>Approach alone does not release cargo. Once a continuous pore connects the vesicle to the outside, soluble proteins can exit.</p>
+<p>The model illustrates event order. It does not simulate real membrane proteins or rates.</p>
+<button id="retry" class="secondary">Try the experiment again</button></div>
+</section>
+<section class="step" data-page="3" hidden>
+<div class="eyebrow">Next · 4 of 4</div><h1>Investigation finished</h1>
+<div class="panel"><p>You explored vesicle approach, pore formation, and protein release.</p>
+<p><strong>Reflect:</strong> Why would cargo remain enclosed if two membranes touch but no pore opens?</p>
+<p class="muted small">This is not an LMS grade, submission, or verified completed lesson.</p>
+<button id="restart" class="secondary">Restart draft preview</button></div>
+</section></main>
+<footer><span id="progress">Teach · 1 of 4</span><div class="actions"><button id="back" class="secondary" disabled>Back</button><button id="next">Next</button></div></footer>
+</div>
+<script type="module">
+import {attachCheckpointVideo} from '../scripts/flagship-video-adapter.mjs';
+const $=id=>document.getElementById(id),hash='2be54741beee271dc0ddfa233691c1c0f1d8e917f5dd535508bdeae66f10f68c';
+const key='pp-inside-cell-paged-v1';let page=0,stage=0,adapter=null,url=null;
+function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage}))}catch{}}
+function paintModel(){
+ $('vesicle').setAttribute('transform',stage===0?'translate(0 -22)':'translate(0 0)');
+ $('pore').hidden=stage<2;$('released').hidden=stage<3;$('cargo').hidden=stage===3;
+ $('dock').disabled=stage!==0;$('fuse').disabled=stage!==1;$('release').disabled=stage!==2;
+ $('modelStatus').textContent=[
+ 'Stage 0: Cargo is enclosed in a separate vesicle.',
+ 'Stage 1: Vesicle approaches the membrane; cargo remains inside.',
+ 'Stage 2: A simplified fusion pore is open; cargo is still inside.',
+ 'Stage 3: Protein cargo has passed through the pore.'
+ ][stage];save();
+}
+function paint(){
+ document.querySelectorAll('[data-page]').forEach(s=>s.hidden=Number(s.dataset.page)!==page);
+ $('progress').textContent=['Teach','Do','Feedback','Next'][page]+' · '+(page+1)+' of 4';
+ $('back').disabled=page===0;$('next').hidden=page===3;$('next').disabled=page===1&&stage!==3;
+ if(page!==0)$('video').pause();$('main').scrollTop=0;save();
+}
+function go(n){page=n;paint()}
+$('next').onclick=()=>{if(page<3&&(page!==1||stage===3))go(page+1)};
+$('back').onclick=()=>{if(page>0)go(page-1)};
+$('dock').onclick=()=>{if(stage===0){stage=1;paintModel();paint()}};
+$('fuse').onclick=()=>{if(stage===1){stage=2;paintModel();paint()}};
+$('release').onclick=()=>{if(stage===2){stage=3;paintModel();paint()}};
+$('reset').onclick=()=>{stage=0;paintModel();paint()};
+$('retry').onclick=()=>{stage=0;paintModel();go(1)};
+$('restart').onclick=()=>{stage=0;paintModel();go(0)};
+function videoState(s){
+ const active=['question','feedback','replay'].includes(s.phase);
+ $('checkpoint').hidden=!active;$('answers').hidden=s.phase!=='question';
+ $('clipFeedback').hidden=s.phase==='question';
+ $('replay').hidden=s.phase!=='feedback';$('continue').hidden=s.phase!=='feedback';
+ $('play').hidden=!['ready','playing'].includes(s.phase);
+ $('play').textContent=s.phase==='ready'?'Play proof':'Resume proof';
+}
+document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{
+ if(!adapter||adapter.getState().phase!=='question')return;
+ $('clipFeedback').textContent=b.dataset.choice==='no'?
+ 'Right: approach is not fusion. No pore or cargo release is shown.':
+ 'Not yet: approaching the membrane does not release enclosed cargo.';
+ adapter.presentFeedback();
+});
+$('play').onclick=()=>adapter?.play();$('replay').onclick=()=>adapter?.replay();
+$('continue').onclick=()=>adapter?.continueVideo();
+$('proof').onchange=async e=>{
+ adapter?.destroy();adapter=null;if(url){URL.revokeObjectURL(url);url=null}
+ const v=$('video');v.pause();v.removeAttribute('src');v.load();v.hidden=true;
+ $('checkpoint').hidden=true;$('play').hidden=true;
+ const f=e.target.files?.[0];if(!f){$('mediaStatus').textContent='Video not attached.';return}
+ if(f.size<100||f.size>100*1024*1024){$('mediaStatus').textContent='Rejected: unexpected file size.';return}
+ $('mediaStatus').textContent='Verifying local original video hash…';
+ try{
+  const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await f.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('');
+  if(digest!==hash)throw new Error('File hash does not match the original producer proof');
+  url=URL.createObjectURL(f);v.src=url;
+  await new Promise((resolve,reject)=>{v.onloadedmetadata=resolve;v.onerror=()=>reject(new Error('Cannot decode MP4'));v.load()});
+  if(!Number.isFinite(v.duration)||Math.abs(v.duration-8)>.25)throw new Error('Unexpected proof duration');
+  adapter=attachCheckpointVideo({video:v,
+   spec:{lessonId:'inside-the-cell',clipId:'vesicle-approach-proof',contentVersion:'0.0.0-dev',
+    contentSha256:hash,durationSeconds:v.duration,checkpoints:[{id:'approach-prediction',atSeconds:5}]},
+   storage:sessionStorage,storageKey:'pp-draft-proof-'+hash.slice(0,16),
+   onState:videoState,onPlaybackError:()=>{$('mediaStatus').textContent='Playback failed: check codec support.'}});
+  v.hidden=false;$('mediaStatus').textContent='Verified silent proof loaded. Checkpoint at 5 seconds. Still unapproved.';
+ }catch(err){$('mediaStatus').textContent='Media unavailable: '+err.message;v.hidden=true;if(url){URL.revokeObjectURL(url);url=null}}
+};
+window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
+try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
+ if(d&&Number.isInteger(d.page)&&d.page>=0&&d.page<=3&&Number.isInteger(d.stage)&&d.stage>=0&&d.stage<=3&&!(d.page>1&&d.stage!==3)){page=d.page;stage=d.stage}}catch{}
+paintModel();paint();
+</script></body></html>
