@@ -96,7 +96,7 @@ function paintModel(){
   :'Fusion permitted: after approach, a pore can form.';
  $('trialEvidence').textContent=blockedObserved
   ?(stage===3?'Both conditions observed: blocked fusion kept cargo inside; permitted fusion released it.':'Blocked condition observed: cargo stayed inside. Now allow fusion and release cargo.')
-  :'Evidence: first block fusion, approach, and test the blocked condition.';
+  :(stage===3?'You observed release. Select Start a new trial, then block fusion to compare before continuing.':'Evidence: first block fusion, approach, and test the blocked condition.');
  $('modelStatus').textContent=[
  'Stage 0: Cargo is enclosed in a separate vesicle.',
  'Stage 1: Vesicle approaches the membrane; cargo remains inside.',
