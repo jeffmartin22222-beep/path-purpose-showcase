@@ -48,6 +48,12 @@ export function withPrivateHandoffLedger(ledgerPath, handoff, work) {
   const directory = path.dirname(ledgerPath);
   if (fs.realpathSync(directory) !== directory)
     throw new Error('Replay ledger parent must not be a symlink');
+  // A world-writable parent can allow another account to replace the ledger
+  // or its lock. A private shared volume may be group-writable, but must not
+  // be writable by everyone.
+  const parentStat = fs.statSync(directory);
+  if (!parentStat.isDirectory() || (parentStat.mode & 0o002))
+    throw new Error('Private replay ledger directory must not be world-writable');
   for (const candidate of [ledgerPath, ledgerPath + '.lock']) {
     let stat;
     try { stat = fs.lstatSync(candidate); }
@@ -58,6 +64,10 @@ export function withPrivateHandoffLedger(ledgerPath, handoff, work) {
     // lstat (rather than existsSync) also catches dangling symlinks.
     if (stat.isSymbolicLink() || !stat.isFile())
       throw new Error('Replay ledger or lock must be a regular non-symlink file');
+    // The authoritative replay history must not be readable or writable by
+    // unrelated local accounts, or aliased through another hardlink.
+    if (stat.nlink !== 1 || (stat.mode & 0o077))
+      throw new Error('Private replay ledger or lock has unsafe links or permissions (require 0600)');
   }
   const lockPath = ledgerPath + '.lock';
   let lock;
