@@ -31,3 +31,9 @@ test('prototype and approved curriculum are explicitly distinguished', () => {
   assert.match(html, /unapproved prototype/);
   assert.match(html, /No lessons have passed all four QA reviews yet/);
 });
+
+test('catalog renderer requires benchmark and four-pass evidence metadata', () => {
+  assert.match(html, /lesson\\.benchmark\\?\\.path/);
+  assert.match(html, /review\\.evidence\\.length>0/);
+  assert.match(html, /lesson\\.packageSha256/);
+});
