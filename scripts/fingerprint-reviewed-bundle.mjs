@@ -55,18 +55,42 @@ export function fingerprintReviewedBundle(source) {
   const buffer = Buffer.allocUnsafe(1024 * 1024);
   for (const relative of paths) {
     const absolute = path.join(root, ...relative.split('/'));
-    const stat = fs.lstatSync(absolute);
+    // Recheck each file at open time. A prior directory walk alone cannot
+    // protect against a file being swapped for a symlink or hardlink before
+    // hashing. Production runners must use a private, isolated POSIX volume.
+    if (typeof fs.constants.O_NOFOLLOW !== 'number') {
+      throw new Error('Private handoff hashing requires O_NOFOLLOW support');
+    }
+    const stat = fs.lstatSync(absolute, { bigint: true });
+    if (!stat.isFile() || stat.nlink !== 1n) {
+      throw new Error('Unsafe private handoff file before hashing: ' + relative);
+    }
     const fileHash = crypto.createHash('sha256');
-    const fd = fs.openSync(absolute, 'r');
+    const fd = fs.openSync(absolute, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
     try {
+      const opened = fs.fstatSync(fd, { bigint: true });
+      if (!opened.isFile() || opened.nlink !== 1n ||
+          opened.dev !== stat.dev || opened.ino !== stat.ino || opened.size !== stat.size) {
+        throw new Error('Private handoff file changed before hashing: ' + relative);
+      }
       let position = 0;
-      while (position < stat.size) {
-        const n = fs.readSync(fd, buffer, 0, Math.min(buffer.length, stat.size - position), position);
+      const expectedSize = Number(stat.size);
+      while (position < expectedSize) {
+        const n = fs.readSync(fd, buffer, 0, Math.min(buffer.length, expectedSize - position), position);
         if (n === 0) throw new Error('Unexpected EOF while hashing: ' + relative);
         fileHash.update(buffer.subarray(0, n));
         position += n;
       }
-      if (fs.fstatSync(fd).size !== stat.size) throw new Error('File changed during hashing: ' + relative);
+      const after = fs.fstatSync(fd, { bigint: true });
+      const current = fs.lstatSync(absolute, { bigint: true });
+      for (const observed of [after, current]) {
+        if (!observed.isFile() || observed.nlink !== 1n ||
+            observed.dev !== stat.dev || observed.ino !== stat.ino ||
+            observed.size !== stat.size || observed.mtimeNs !== stat.mtimeNs ||
+            observed.ctimeNs !== stat.ctimeNs) {
+          throw new Error('Private handoff file changed during hashing: ' + relative);
+        }
+      }
     } finally {
       fs.closeSync(fd);
     }
