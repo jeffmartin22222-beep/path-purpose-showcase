@@ -61,7 +61,7 @@ try{
     assert.match(await page.locator('#progress').innerText(),/Teach/);
     await page.locator('#proof').setInputFiles({name:'not-the-producer-proof.mp4',
       mimeType:'video/mp4',buffer:Buffer.alloc(1024,7)});
-    await page.locator('#mediaStatus').getByText(/does not match/).waitFor();
+    await page.getByText(/Media unavailable: File hash does not match/).waitFor();
     assert.equal(await page.locator('#video').isVisible(),false);
     assert.deepEqual(errors,[],engine+' '+width+' page errors');
     count++;
