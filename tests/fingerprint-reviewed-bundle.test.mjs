@@ -64,3 +64,24 @@ test('private fingerprint refuses empty files and unsupported file entries', () 
   // Empty directories do not affect the hash; no hidden file is published.
   assert.equal(fingerprintReviewedBundle(bundle).fileCount, 3);
 }));
+
+test('rejects a same-byte file replacement between enumeration and open', () => fixture(({ bundle }) => {
+  const target = path.join(bundle, 'lessons/demo/index.html');
+  const originalOpen = fs.openSync;
+  let replaced = false;
+  fs.openSync = function(candidate, ...args) {
+    if (candidate === target && !replaced) {
+      replaced = true;
+      const bytes = fs.readFileSync(target);
+      fs.renameSync(target, target + '.previous');
+      fs.writeFileSync(target, bytes);
+    }
+    return originalOpen.call(fs, candidate, ...args);
+  };
+  try {
+    assert.throws(() => fingerprintReviewedBundle(bundle), /changed before hashing/);
+    assert.equal(replaced, true);
+  } finally {
+    fs.openSync = originalOpen;
+  }
+}));
