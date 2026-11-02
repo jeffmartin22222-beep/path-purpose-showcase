@@ -60,3 +60,32 @@ test('expired producer record is rejected', () => fixture(f => {
 test('unrecognized signed fields are rejected', () => fixture(f => {
   assert.throws(() => f.save({ ...f.payload, unreviewed: 'yes' }), /Unexpected signed handoff fields/);
 }));
+
+test('signed record symlink and hardlink are rejected', () => fixture(f => {
+  const alias = path.join(f.dir, 'record-alias.json');
+  fs.symlinkSync(f.record, alias);
+  assert.throws(() => verifySignedHandoff(alias, f.pub, f.expected, f.now), /Unsafe signed handoff record/);
+  fs.unlinkSync(alias);
+  fs.linkSync(f.record, alias);
+  assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now), /Unsafe signed handoff record/);
+}));
+test('trusted public key symlink and hardlink are rejected', () => fixture(f => {
+  const alias = path.join(f.dir, 'key-alias.pem');
+  fs.symlinkSync(f.pub, alias);
+  assert.throws(() => verifySignedHandoff(f.record, alias, f.expected, f.now), /Unsafe trusted producer public key/);
+  fs.unlinkSync(alias);
+  fs.linkSync(f.pub, alias);
+  assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now), /Unsafe trusted producer public key/);
+}));
+test('group/world writable handoff trust inputs fail closed', () => fixture(f => {
+  for (const file of [f.record, f.pub]) {
+    const mode = fs.statSync(file).mode & 0o777;
+    try {
+      fs.chmodSync(file, 0o666);
+      assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now), /Unsafe/);
+    } finally { fs.chmodSync(file, mode); }
+  }
+}));
+test('signed record and trusted key cannot be the same file', () => fixture(f => {
+  assert.throws(() => verifySignedHandoff(f.record, f.record, f.expected, f.now), /separate files/);
+}));
