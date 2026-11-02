@@ -64,6 +64,8 @@ jobs:
         run: |
           npm install --no-save --no-package-lock playwright@1.56.1
           npx playwright install --with-deps chromium webkit
+      - name: Exercise development-only Biology player in Chromium and WebKit
+        run: node tests/flagship-player-browser.mjs
       - name: Exercise Chromium phone and tablet layouts
         run: node tests/browser-smoke.mjs
       - name: Exercise WebKit phone and tablet layouts (emulated, not physical iOS)
