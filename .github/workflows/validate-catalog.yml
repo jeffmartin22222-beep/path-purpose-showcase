@@ -14,9 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check producer review PR boundary guard syntax
+        run: node --check scripts/validate-review-pr-diff.mjs
+      - name: Reject unauthorized producer review PR file changes
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/review-')
+        env:
+          PP_REVIEW_HEAD_REF: ${{ github.head_ref }}
+          PP_REVIEW_BASE_REF: ${{ github.base_ref }}
+          PP_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PP_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/validate-review-pr-diff.mjs
       - name: Check import tool syntax
         run: node --check scripts/import-approved-package.mjs
       - name: Check symlink-safe import path syntax
