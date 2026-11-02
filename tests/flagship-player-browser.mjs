@@ -79,6 +79,7 @@ try{
     await page.locator('#fuse').click();
     await page.locator('#release').click();
     assert.equal(await page.locator('#next').isDisabled(),true);
+    assert.match(await page.locator('#trialEvidence').innerText(),/Start a new trial/);
     await page.locator('#reset').click();
     await page.locator('#fusionToggle').click();
     await page.locator('#dock').click();
