@@ -22,7 +22,7 @@ jobs:
       - name: Check producer review PR boundary guard syntax
         run: node --check scripts/validate-review-pr-diff.mjs
       - name: Reject unauthorized producer review PR file changes
-        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/review-')
+        if: github.event_name == 'pull_request' && github.base_ref == 'feature/qa-gated-publishing'
         env:
           PP_REVIEW_HEAD_REF: ${{ github.head_ref }}
           PP_REVIEW_BASE_REF: ${{ github.base_ref }}
