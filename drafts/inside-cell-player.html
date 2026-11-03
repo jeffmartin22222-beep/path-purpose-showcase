@@ -54,6 +54,7 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <label for="proof">Local MP4 proof (optional for draft walkthrough)</label>
 <input id="proof" type="file" accept=".mp4,video/mp4">
 <p id="mediaStatus" role="status" aria-live="polite" class="small">Video not attached. Media acceptance blocked.</p>
+<div class="actions"><button id="discardVideo" class="secondary" type="button" hidden>Remove video and use unverified draft pathway</button></div>
 <p id="videoTimeline" class="small" role="status" aria-live="off" hidden>Video ready. Checkpoints at 15 and 23.5 seconds.</p>
 <p class="small">No approved video on this device? You can still investigate the membrane model independently. The video checkpoints remain unverified.</p>
 <div class="actions"><button id="skipUnavailableVideo" class="secondary" type="button">Continue to hands-on investigation</button></div>
@@ -149,10 +150,14 @@ const clipQuestions=[
   feedbackNo:'Look again: the open pore provides a continuous route for cargo to pass in this conceptual model.',
   feedbackYes:'Supported: the pore provides a route for cargo to pass. The model shows release after opening.'}
 ];
-let page=0,stage=0,fusionBlocked=false,blockedObserved=false,prediction=null,predictionLocked=false,evidenceChoice=null,explanation='',adapter=null,url=null;
+let page=0,stage=0,fusionBlocked=false,blockedObserved=false,prediction=null,predictionLocked=false,evidenceChoice=null,explanation='',adapter=null,url=null,mediaRequired=false;
 // A loaded proof cannot be bypassed before both checkpoint explanations and playback complete.
 // No media attached remains an explicitly unverified draft-only investigation path.
-const mediaIncomplete=()=>Boolean(adapter&&adapter.getState().phase!=='complete');
+const mediaIncomplete=()=>mediaRequired&&(!adapter||adapter.getState().phase!=='complete');
+function paintMediaGate(){
+ $('discardVideo').hidden=!mediaRequired;
+ if(mediaRequired&&!adapter)$('mediaStatus').textContent='Video checkpoint pathway selected. Reload the verified original MP4 to resume; or explicitly remove it to use the unverified draft pathway.';
+}
 const predictionLabels={enclosed:'Cargo stays inside the vesicle',released:'Cargo leaves immediately'};
 const predictionResponses={
  enclosed:'Prediction saved. Test it: compare a blocked pore with a permitted pore. A prediction is not a grade.',
@@ -163,7 +168,7 @@ const evidenceResponses={
  approach:'Look again: in the blocked trial the vesicle approached, but cargo stayed enclosed. Approach alone did not release it. Compare that result with the open-pore trial.',
  both:'Check the blocked trial: cargo stayed inside when no pore could form. Only the permitted-fusion trial showed cargo leaving through an open pore.'
 };
-function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusionBlocked,blockedObserved,prediction,predictionLocked,evidenceChoice,explanation}))}catch{}}
+function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusionBlocked,blockedObserved,prediction,predictionLocked,evidenceChoice,explanation,mediaRequired}))}catch{}}
 function paintModel(){
  $('vesicle').setAttribute('transform',stage===0?'translate(0 8)':'translate(0 -27)');
  $('pore').hidden=stage<2;$('released').hidden=stage<3;$('cargo').hidden=stage===3;
@@ -230,7 +235,7 @@ function paintEvidence(){
   :'Select the supported observation to see feedback and continue.';
 }
 function paint(){
- paintPrediction();paintEvidence();
+ paintPrediction();paintEvidence();paintMediaGate();
  $('explanationStatus').textContent=explanation.trim()
   ?'Explanation saved in this browser tab. Not submitted or graded.'
   :'Add your own explanation before Next. This is not graded.';
@@ -354,7 +359,7 @@ $('proof').onchange=async e=>{
  adapter?.destroy();adapter=null;paint();if(url){URL.revokeObjectURL(url);url=null}
  const v=$('video');v.pause();v.removeAttribute('src');v.load();v.hidden=true;updateVideoTimeline();
  $('checkpoint').hidden=true;$('play').hidden=true;
- const f=e.target.files?.[0];if(!f){$('mediaStatus').textContent='Video not attached.';return}
+ const f=e.target.files?.[0];if(!f){paintMediaGate();if(!mediaRequired)$('mediaStatus').textContent='Video not attached.';return}
  if(f.size<100||f.size>100*1024*1024){$('mediaStatus').textContent='Rejected: unexpected file size.';return}
  $('mediaStatus').textContent='Verifying local original video hash…';
  try{
@@ -363,6 +368,7 @@ $('proof').onchange=async e=>{
   url=URL.createObjectURL(f);v.src=url;
   await new Promise((resolve,reject)=>{v.onloadedmetadata=resolve;v.onerror=()=>reject(new Error('Cannot decode MP4'));v.load()});
   if(!Number.isFinite(v.duration)||Math.abs(v.duration-32)>.25)throw new Error('Unexpected proof duration');
+  mediaRequired=true;save();
   adapter=attachCheckpointVideo({video:v,
    spec:{lessonId:'inside-the-cell',clipId:'golgi-to-membrane-proof',contentVersion:'0.0.0-dev',
     contentSha256:proofHash,durationSeconds:v.duration,checkpoints:[
@@ -373,6 +379,14 @@ $('proof').onchange=async e=>{
    onState:videoState,onPlaybackError:()=>{$('mediaStatus').textContent='Playback failed: check codec support.'}});
   v.hidden=false;updateVideoTimeline();paint();$('mediaStatus').textContent='Original digest matched; 32-second metadata loaded. Checkpoints at 15 and 23.5 seconds. Playback and QA still unverified.';
  }catch(err){$('mediaStatus').textContent='Media unavailable: '+err.message;v.hidden=true;adapter?.destroy();adapter=null;paint();if(url){URL.revokeObjectURL(url);url=null}}
+};
+$('discardVideo').onclick=()=>{
+ adapter?.destroy();adapter=null;mediaRequired=false;
+ const v=$('video');v.pause();v.removeAttribute('src');v.load();v.hidden=true;
+ if(url){URL.revokeObjectURL(url);url=null}
+ $('proof').value='';$('checkpoint').hidden=true;$('play').hidden=true;
+ $('mediaStatus').textContent='Video removed. Draft-only investigation available; video QA remains unverified.';
+ save();paint();
 };
 window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
 try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
@@ -389,6 +403,7 @@ try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
  predictionLocked=Boolean(prediction&&(d.predictionLocked===true||d.page>0||d.stage>0||d.blockedObserved));
  evidenceChoice=d.evidenceChoice||null;
  explanation=d.explanation||'';$('explanation').value=explanation;
+ mediaRequired=d.mediaRequired===true;
  }}catch{}
 paintModel();paint();
 </script></body></html>
