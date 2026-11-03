@@ -414,7 +414,7 @@ try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
  (d.prediction===undefined||d.prediction===null||Object.hasOwn(predictionLabels,d.prediction))&&
  (d.revisedPrediction===undefined||d.revisedPrediction===null||Object.hasOwn(predictionLabels,d.revisedPrediction))&&
  (d.explanation===undefined||(typeof d.explanation==='string'&&d.explanation.length<=500))){
- page=d.page===3&&(!d.evidenceChoice||!d.explanation?.trim()||!d.revisedPrediction)?2:d.page;
+ page=d.page===3&&(d.evidenceChoice!=='blocked'||explanationCheck(d.explanation||'')||!d.revisedPrediction)?2:d.page;
  $('resumeNotice').hidden=false;
  $('resumeNotice').textContent='Draft progress restored in this tab. Continue from your saved '+(['Teach','Do','Feedback','Next'][page])+' screen. This is not an LMS submission.';
  if(page>0&&!d.prediction)page=0; // Earlier draft states must make the new prediction.
