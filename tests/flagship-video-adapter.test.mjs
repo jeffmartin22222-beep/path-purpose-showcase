@@ -31,6 +31,13 @@ test('adapter pauses real video control at checkpoint and replays before resumin
   assert.equal(video.pauses,paused+1,'native controls cannot bypass checkpoint');
   player.presentFeedback();assert.equal(player.getState().phase,'feedback');
   player.replay();assert.equal(video.currentTime,0);
+  video.tick(8);assert.equal(player.getState().phase,'replay');
+  const pausedForReturn=video.pauses;
+  player.returnToFeedback();
+  assert.equal(player.getState().phase,'feedback');
+  assert.equal(video.currentTime,20,'return lands on the checkpoint, not beyond it');
+  assert.equal(video.pauses,pausedForReturn+1,'return pauses playback');
+  player.replay();assert.equal(video.currentTime,0);
   video.tick(22);assert.equal(player.getState().phase,'feedback');
   player.continueVideo();assert.equal(player.getState().phase,'playing');
   video.end();assert.equal(player.getState().phase,'complete');
