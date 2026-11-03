@@ -1,0 +1,133 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { canonicalHandoffPayload, verifySignedHandoff } from '../scripts/verify-signed-handoff.mjs';
+
+function fixture(fn) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pp-signed-handoff-'));
+  try {
+    const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
+    const pub = path.join(dir, 'trusted-public.pem');
+    const record = path.join(dir, 'record.json');
+    fs.writeFileSync(pub, publicKey.export({ type: 'spki', format: 'pem' }));
+    const now = new Date('2026-10-31T20:00:00Z');
+    const payload = {
+      schemaVersion: '1', repository: 'jeffmartin22222-beep/path-purpose-showcase',
+      lessonId: 'demo', lessonVersion: '1', bundleSha256: 'a'.repeat(64),
+      sourceArtifactId: 'private:demo-v1',
+      issuedAt: '2026-10-31T19:00:00Z', expiresAt: '2026-11-01T19:00:00Z'
+    };
+    const expected = {
+      repository: payload.repository, lessonId: payload.lessonId,
+      lessonVersion: payload.lessonVersion, bundleSha256: payload.bundleSha256
+    };
+    const save = (obj = payload) => fs.writeFileSync(record, JSON.stringify({
+      payload: obj,
+      signature: crypto.sign(null, Buffer.from(canonicalHandoffPayload(obj)), privateKey).toString('base64')
+    }));
+    save();
+    fn({ dir, pub, record, payload, expected, now, save });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+test('valid independent signed producer record verifies', () => fixture(f => {
+  assert.equal(verifySignedHandoff(f.record, f.pub, f.expected, f.now).sourceArtifactId, 'private:demo-v1');
+}));
+test('tampered producer record fails signature', () => fixture(f => {
+  const r = JSON.parse(fs.readFileSync(f.record));
+  r.payload.sourceArtifactId = 'private:other';
+  fs.writeFileSync(f.record, JSON.stringify(r));
+  assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now), /signature/);
+}));
+test('untrusted producer key fails signature', () => fixture(f => {
+  const key = crypto.generateKeyPairSync('ed25519').publicKey;
+  fs.writeFileSync(f.pub, key.export({ type: 'spki', format: 'pem' }));
+  assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now), /signature/);
+}));
+test('signed digest must match independently verified bundle', () => fixture(f => {
+  assert.throws(() => verifySignedHandoff(f.record, f.pub, {
+    ...f.expected, bundleSha256: 'b'.repeat(64)
+  }, f.now), /does not match/);
+}));
+test('expired producer record is rejected', () => fixture(f => {
+  assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected,
+    new Date('2026-11-03T00:00:00Z')), /expired/);
+}));
+test('unrecognized signed fields are rejected', () => fixture(f => {
+  assert.throws(() => f.save({ ...f.payload, unreviewed: 'yes' }), /Unexpected signed handoff fields/);
+}));
+
+test('signed record symlink and hardlink are rejected', () => fixture(f => {
+  const alias = path.join(f.dir, 'record-alias.json');
+  fs.symlinkSync(f.record, alias);
+  assert.throws(() => verifySignedHandoff(alias, f.pub, f.expected, f.now), /Unsafe signed handoff record/);
+  fs.unlinkSync(alias);
+  fs.linkSync(f.record, alias);
+  assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now), /Unsafe signed handoff record/);
+}));
+test('trusted public key symlink and hardlink are rejected', () => fixture(f => {
+  const alias = path.join(f.dir, 'key-alias.pem');
+  fs.symlinkSync(f.pub, alias);
+  assert.throws(() => verifySignedHandoff(f.record, alias, f.expected, f.now), /Unsafe trusted producer public key/);
+  fs.unlinkSync(alias);
+  fs.linkSync(f.pub, alias);
+  assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now), /Unsafe trusted producer public key/);
+}));
+test('group/world writable handoff trust inputs fail closed', () => fixture(f => {
+  for (const file of [f.record, f.pub]) {
+    const mode = fs.statSync(file).mode & 0o777;
+    try {
+      fs.chmodSync(file, 0o666);
+      assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now), /Unsafe/);
+    } finally { fs.chmodSync(file, mode); }
+  }
+}));
+test('signed record and trusted key cannot be the same file', () => fixture(f => {
+  assert.throws(() => verifySignedHandoff(f.record, f.record, f.expected, f.now), /separate files/);
+}));
+
+
+test('replacement of signed record during descriptor read fails closed', () => fixture(f => {
+  const original = fs.readFileSync;
+  const originalBytes = original(f.record);
+  let swapped = false;
+  try {
+    fs.readFileSync = function (target, ...args) {
+      if (typeof target === 'number' && !swapped) {
+        swapped = true;
+        fs.renameSync(f.record, path.join(f.dir, 'old-record.json'));
+        fs.writeFileSync(f.record, originalBytes);
+      }
+      return original.call(fs, target, ...args);
+    };
+    assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now),
+      /Unsafe signed handoff record/);
+    assert.equal(swapped, true);
+  } finally {
+    fs.readFileSync = original;
+  }
+}));
+
+test('replacement of trusted public key during descriptor read fails closed', () => fixture(f => {
+  const original = fs.readFileSync;
+  const originalBytes = original(f.pub);
+  let descriptorReads = 0;
+  try {
+    fs.readFileSync = function (target, ...args) {
+      if (typeof target === 'number' && ++descriptorReads === 2) {
+        fs.renameSync(f.pub, path.join(f.dir, 'old-public.pem'));
+        fs.writeFileSync(f.pub, originalBytes);
+      }
+      return original.call(fs, target, ...args);
+    };
+    assert.throws(() => verifySignedHandoff(f.record, f.pub, f.expected, f.now),
+      /Unsafe trusted producer public key/);
+    assert.equal(descriptorReads, 2);
+  } finally {
+    fs.readFileSync = original;
+  }
+}));

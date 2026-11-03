@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inside the Cell — draft student player</title>
+<style>
+:root{font-family:system-ui,sans-serif;background:#071827;color:#effaff;color-scheme:dark}*{box-sizing:border-box}body{margin:0}
+#app{max-width:900px;margin:auto;height:100dvh;display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+header,footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;background:#0b2231;border-color:#34566a}
+header{border-bottom:1px solid #34566a;flex-wrap:wrap}footer{border-top:1px solid #34566a;min-width:0}
+.brand{font-weight:850;color:#81e9dc}.tag{font-size:.72rem;color:#ffd895;border:1px solid #987748;border-radius:99px;padding:5px 8px}
+main{min-height:0;overflow:auto;padding:12px 14px}.step{max-width:690px;margin:auto}.step[hidden],[hidden]{display:none!important}
+h1{font-size:clamp(1.35rem,5vw,2rem);margin:6px 0 9px}h2{font-size:1.08rem;margin:7px 0}p{line-height:1.36;margin:8px 0}.muted{color:#b4cbd6}.small{font-size:.8rem}.eyebrow{color:#80e6da;font-size:.8rem}
+.panel{background:#112e40;border:1px solid #385a6c;border-radius:16px;padding:13px;margin:10px 0}
+button{font:inherit;font-weight:750;min-height:44px;border:0;border-radius:12px;padding:9px 14px;background:#80e6da;color:#092633;cursor:pointer}
+button.secondary{background:#275064;color:#fff}button:disabled{opacity:.43;cursor:not-allowed}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid white;outline-offset:2px}
+textarea{display:block;width:100%;min-height:82px;max-height:180px;resize:vertical;background:#092333;color:#effaff;border:1px solid #6d98aa;border-radius:10px;padding:10px;font:inherit}
+.actions{display:flex;flex-wrap:wrap;gap:8px}.actions button{flex:1 1 105px}
+input[type=file]{max-width:100%;font-size:.8rem}video{display:block;width:100%;max-height:26dvh;background:#000;border-radius:10px}
+svg{width:100%;height:155px;background:#092333;border:1px solid #365e70;border-radius:12px}
+svg text{font-size:12px;fill:white;font-family:system-ui}
+.checkpoint{border:2px solid #80e6da;border-radius:12px;padding:9px;margin-top:8px}
+#progress{color:#bdd2dc;font-size:.78rem}#next{min-width:105px}
+@media(max-width:380px){header,footer{padding:8px 10px}main{padding:9px 10px}.panel{padding:9px;margin:7px 0}svg{height:125px}p{margin:6px 0}.tag{font-size:.62rem}}
+/* Keep Back and Next reachable on 320px phones, including Safari safe areas. */
+@media(max-width:420px){
+ footer{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+ footer>div:first-child{min-width:0}
+ footer .actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;width:100%}
+ footer .actions button{width:100%;min-width:0;min-height:44px}
+ #nextHint{margin:3px 0;max-height:3.5em;overflow-y:auto;overscroll-behavior:contain}
+}
+@media(max-height:610px){svg{height:112px}video{max-height:22dvh}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body><div id="app">
+<header><span class="brand">PATH + PURPOSE</span><span class="tag">UNAPPROVED · DEVELOPMENT ONLY</span></header>
+<main id="main">
+<p id="resumeNotice" class="small" role="status" aria-live="polite" hidden></p>
+<section class="step" data-page="0">
+<div class="eyebrow">Teach · 1 of 4</div><h1>Inside the Cell: How does cargo leave?</h1>
+<p>Some proteins travel inside membrane-bound vesicles toward the plasma membrane. What happens when a vesicle reaches that boundary? Make a prediction, then investigate.</p>
+<div class="panel" aria-labelledby="targetTitle"><h2 id="targetTitle">Your mission</h2><p><strong>Learning target:</strong> Explain how a vesicle can release protein cargo outside a cell through membrane fusion.</p><p><strong>You will know you have it when you can:</strong> predict what happens without an open pore, test blocked and permitted fusion, compare the evidence, and explain why approach alone does not release cargo.</p></div>
+<div class="panel" role="group" aria-labelledby="predictionTitle">
+<h2 id="predictionTitle">Make a prediction</h2>
+<p>A vesicle touches the cell membrane, but no fusion pore opens. What do you predict happens to its protein cargo?</p>
+<div class="actions" id="predictionChoices">
+<button class="secondary" data-prediction="enclosed" aria-pressed="false">Cargo stays inside the vesicle</button>
+<button class="secondary" data-prediction="released" aria-pressed="false">Cargo leaves immediately</button>
+</div>
+<p id="predictionFeedback" role="status" aria-live="polite">Choose a prediction before exploring. You can test it in the next screen.</p>
+</div>
+<div class="panel"><h2>Original Golgi-to-membrane video proof</h2>
+<p class="muted small">Optional local preview: choose the exact original silent 32-second producer MP4 from November 2. The file stays on this device and is never uploaded. This schematic proof has no approved narration, verified captions, or scientific signoff.</p>
+<p id="proofSequence" class="small"><strong>Text alternative for the 32-second proof:</strong> 0–15 s: a cargo-filled vesicle travels from a simplified Golgi region toward the cell membrane; cargo stays enclosed. 15–23 s: it docks, then a conceptual fusion pore opens. 23–32 s: cargo passes out through the open pore. The animation does not show ER protein synthesis or molecularly accurate fusion machinery.</p>
+<label for="proof">Local MP4 proof (optional for draft walkthrough)</label>
+<input id="proof" type="file" accept=".mp4,video/mp4">
+<p id="mediaStatus" role="status" aria-live="polite" class="small">Video not attached. Media acceptance blocked.</p>
+<p id="videoTimeline" class="small" role="status" aria-live="off" hidden>Video ready. Checkpoints at 15 and 23.5 seconds.</p>
+<p class="small">No approved video on this device? You can still investigate the membrane model independently. The video checkpoints remain unverified.</p>
+<div class="actions"><button id="skipUnavailableVideo" class="secondary" type="button">Continue to hands-on investigation</button></div>
+<video id="video" playsinline controls preload="metadata" aria-label="Original Golgi-to-membrane exocytosis proof" aria-describedby="proofSequence" hidden></video>
+<div class="actions"><button id="play" hidden>Play proof</button></div>
+<div class="checkpoint" id="checkpoint" hidden>
+<p id="checkpointPrompt"><strong>Prediction:</strong> Has cargo already exited before a fusion pore opens?</p>
+<div class="actions" id="answers"><button data-choice="no">No — cargo remains enclosed</button><button data-choice="yes">Yes — cargo has exited</button></div>
+<p id="checkpointProgress" class="small" role="status" aria-live="polite" hidden></p>
+<p id="clipFeedback" role="status" aria-live="polite" hidden></p>
+<p id="replayStatus" role="status" aria-live="polite" class="small" hidden>Rewatching the clip. Return to this checkpoint whenever you are ready.</p>
+<div class="actions"><button id="replay" class="secondary" hidden>Rewatch</button><button id="returnCheckpoint" class="secondary" hidden aria-describedby="replayStatus">Return to checkpoint</button><button id="continue" hidden>Continue video</button></div>
+</div></div>
+<p class="muted small">The text sequence above is a draft visual description, not a synchronized caption track or a replacement for independent accessibility review.</p>
+</section>
+<section class="step" data-page="1" hidden>
+<div class="eyebrow">Do · 2 of 4</div><h1>Explore protein release</h1>
+<p>Investigate two conditions: block fusion to test whether touching the membrane releases cargo, then allow fusion and compare the outcome. All controls work with touch or keyboard.</p>
+<div class="panel">
+<svg id="diagram" viewBox="0 0 340 155" role="img" aria-label="Conceptual exocytosis: vesicle, cell membrane, pore and protein cargo">
+<rect width="340" height="105" y="50" fill="#194b60"/><path d="M0 50 H340" stroke="#77e2d3" stroke-width="8"/>
+<g id="vesicle" transform="translate(0 8)"><circle cx="170" cy="106" r="29" fill="#28485e" stroke="#f1b56f" stroke-width="6"/>
+<g id="cargo" fill="#ebc9ff"><circle cx="156" cy="99" r="5"/><circle cx="180" cy="100" r="5"/><circle cx="170" cy="117" r="5"/></g></g>
+<rect id="pore" x="156" y="44" width="28" height="14" fill="#092333" hidden/>
+<g id="released" fill="#ebc9ff" hidden><circle cx="141" cy="25" r="5"/><circle cx="172" cy="29" r="5"/><circle cx="199" cy="25" r="5"/></g>
+<text x="10" y="20">Outside cell</text><text x="10" y="146">Cell interior</text></svg>
+<p id="modelStatus" role="status" aria-live="polite"></p>
+<p id="modelStageProgress" class="small" role="status" aria-live="polite">Model step 1 of 4 · Cargo enclosed</p>
+<p id="mechanismInsight" class="small" aria-live="polite">Why it matters: a vesicle membrane separates cargo from the outside of the cell. Approaching the plasma membrane alone does not create an exit route.</p>
+<div class="actions"><button id="fusionToggle" class="secondary" aria-pressed="false" aria-describedby="conditionStatus">Block fusion</button><button id="blockedTest" class="secondary" disabled>Test blocked fusion</button></div>
+<p id="conditionStatus" class="small">Fusion permitted. A pore can form after approach.</p>
+<div class="actions"><button id="dock">1. Approach</button><button id="fuse" disabled>2. Open pore</button><button id="release" disabled>3. Release</button></div>
+<p id="predictionRecall" class="small">Your prediction will appear here after you choose one on Teach.</p>
+<p id="trialEvidence" role="status" aria-live="polite">Evidence: Neither condition has been tested yet.</p>
+<p id="predictionCheck" class="small" role="status" aria-live="polite">Test your prediction by observing the blocked-fusion condition.</p>
+<p id="trialHint" class="small" role="status" aria-live="polite">Investigation tip: block fusion, approach the membrane, then test what happens to the cargo.</p>
+<div class="panel" aria-labelledby="trialChecklistTitle"><h2 id="trialChecklistTitle">Your investigation checklist</h2><p id="blockedChecklist">○ Block fusion and test whether cargo stays inside.</p><p id="permittedChecklist">○ Allow fusion, open the pore, and release cargo.</p><p id="compareChecklist" role="status" aria-live="polite">Finish both trials to unlock Feedback.</p></div>
+<div class="actions"><button id="reset" class="secondary">Start a new trial</button></div></div>
+<div class="actions"><button id="reviewVideo" class="secondary" type="button">Review video and checkpoints</button></div>
+<p class="muted small">This models event order, not lipid physics, kinetics, or the molecular machinery of membrane fusion. No special materials or partners are needed.</p>
+</section>
+<section class="step" data-page="2" hidden>
+<div class="eyebrow">Feedback · 3 of 4</div><h1>What did the model show?</h1>
+<div class="panel"><p id="predictionCompare" role="status" aria-live="polite"></p><p>You compared two conditions: blocking fusion kept cargo inside even after approach. Allowing fusion let a pore open and cargo pass through. This is evidence that approach alone is insufficient.</p>
+<p>The model illustrates event order. It does not simulate real membrane proteins or rates.</p>
+<div class="panel" aria-labelledby="compareTitle">
+<h2 id="compareTitle">Compare your two trials</h2>
+<table style="width:100%;border-collapse:collapse;text-align:left;font-size:.9rem">
+<thead><tr><th scope="col" style="padding:8px;border-bottom:1px solid #6d98aa">Condition</th><th scope="col" style="padding:8px;border-bottom:1px solid #6d98aa">What you observed</th></tr></thead>
+<tbody><tr><th scope="row" style="padding:8px;border-bottom:1px solid #385a6c">Fusion blocked</th><td style="padding:8px;border-bottom:1px solid #385a6c">Vesicle approached; cargo stayed enclosed.</td></tr>
+<tr><th scope="row" style="padding:8px">Fusion permitted</th><td style="padding:8px">Pore opened; cargo passed outside.</td></tr></tbody></table>
+<p class="small"><strong>What changed?</strong> Whether a pore could open. <strong>What stayed the same?</strong> The vesicle approached the membrane in both trials. Use this comparison to choose your evidence below.</p>
+</div>
+<div class="checkpoint" role="group" aria-labelledby="evidenceQuestion">
+<h2 id="evidenceQuestion">Which observation is evidence that fusion is needed for cargo release?</h2>
+<p class="muted small">Choose the observation supported by your two trials. If your first choice is not supported, use the feedback to revise it before continuing.</p>
+<div class="actions" id="evidenceChoices">
+<button class="secondary" data-evidence="blocked" aria-pressed="false">Cargo stayed inside when fusion was blocked, but exited after a pore opened.</button>
+<button class="secondary" data-evidence="approach" aria-pressed="false">Cargo exited as soon as the vesicle approached the membrane.</button>
+<button class="secondary" data-evidence="both" aria-pressed="false">Cargo exited in both trials, even without an open pore.</button>
+</div>
+<p id="evidenceFeedback" role="status" aria-live="polite">Select the supported observation to see feedback and continue.</p>
+<label for="explanation"><strong>Explain your reasoning:</strong> Why did blocking fusion help test whether approach alone releases cargo?</label>
+<textarea id="explanation" maxlength="500" rows="3" aria-describedby="explanationStatus" placeholder="I observed that…"></textarea>
+<p id="explanationStatus" role="status" aria-live="polite" class="small">Add your own explanation before Next. This is not graded.</p>
+</div>
+<button id="retry" class="secondary">Try the experiment again</button></div>
+</section>
+<section class="step" data-page="3" hidden>
+<div class="eyebrow">Next · 4 of 4</div><h1>Investigation finished</h1>
+<div class="panel"><p>You explored vesicle approach, pore formation, and protein release.</p>
+<p><strong>Reflect:</strong> Why would cargo remain enclosed if two membranes touch but no pore opens?</p>
+<div class="panel" aria-labelledby="recapTitle"><h2 id="recapTitle">Your investigation evidence</h2><p id="recapPrediction"></p><p id="recapBlocked"></p><p id="recapAllowed"></p></div>
+<p><strong>Your explanation:</strong> <span id="reflectionSummary"></span></p>
+<p class="muted small">Your explanation is saved only in this browser tab. This is not an LMS grade, submission, or verified completed lesson.</p>
+<button id="restart" class="secondary">Restart draft preview</button></div>
+</section></main>
+<footer><div><span id="progress">Teach · 1 of 4</span><p id="nextHint" class="small" role="status" aria-live="polite">Choose a prediction to continue.</p></div><div class="actions"><button id="back" class="secondary" disabled>Back</button><button id="next">Next</button></div></footer>
+</div>
+<script type="module">
+import {attachCheckpointVideo} from '../scripts/flagship-video-adapter.mjs';
+const $=id=>document.getElementById(id);
+const lessonHash='2be54741beee271dc0ddfa233691c1c0f1d8e917f5dd535508bdeae66f10f68c';
+const proofHash='60f4e4a4427a0695807d84add4cc9d61c23a8306d9c616c6c15d756e35cb4d76';
+const key='pp-inside-cell-paged-v2-'+lessonHash.slice(0,16);
+const clipQuestions=[
+ {prompt:'At 15 seconds, the vesicle has approached the membrane but no pore has opened. Has cargo exited?',
+  no:'No — cargo is still enclosed',yes:'Yes — cargo already exited',
+  feedbackNo:'Supported: the cargo remains enclosed while the pore is closed.',
+  feedbackYes:'Look closely: approaching the membrane alone does not release cargo in this model.'},
+ {prompt:'At 23.5 seconds, a fusion pore is open. Can cargo now pass through this opening?',
+  no:'No — an open pore changes nothing',yes:'Yes — the pore allows passage',
+  feedbackNo:'Look again: the open pore provides a continuous route for cargo to pass in this conceptual model.',
+  feedbackYes:'Supported: the pore provides a route for cargo to pass. The model shows release after opening.'}
+];
+let page=0,stage=0,fusionBlocked=false,blockedObserved=false,prediction=null,evidenceChoice=null,explanation='',adapter=null,url=null;
+const predictionLabels={enclosed:'Cargo stays inside the vesicle',released:'Cargo leaves immediately'};
+const predictionResponses={
+ enclosed:'Prediction saved. Test it: compare a blocked pore with a permitted pore. A prediction is not a grade.',
+ released:'Prediction saved. Test it: can cargo cross the membrane without an open pore? A prediction is not a grade.'
+};
+const evidenceResponses={
+ blocked:'Supported: blocking fusion kept cargo enclosed after approach. When fusion was permitted, a pore opened and cargo exited. This comparison supports the need for an open pore in this model.',
+ approach:'Look again: in the blocked trial the vesicle approached, but cargo stayed enclosed. Approach alone did not release it. Compare that result with the open-pore trial.',
+ both:'Check the blocked trial: cargo stayed inside when no pore could form. Only the permitted-fusion trial showed cargo leaving through an open pore.'
+};
+function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusionBlocked,blockedObserved,prediction,evidenceChoice,explanation}))}catch{}}
+function paintModel(){
+ $('vesicle').setAttribute('transform',stage===0?'translate(0 8)':'translate(0 -27)');
+ $('pore').hidden=stage<2;$('released').hidden=stage<3;$('cargo').hidden=stage===3;
+ $('dock').disabled=stage!==0;$('fuse').disabled=stage!==1||fusionBlocked;$('release').disabled=stage!==2;
+ $('fusionToggle').disabled=stage>1;
+ $('fusionToggle').setAttribute('aria-pressed',String(fusionBlocked));
+ $('fusionToggle').textContent=fusionBlocked?'Allow fusion':'Block fusion';
+ $('blockedTest').disabled=stage!==1||!fusionBlocked;
+ $('conditionStatus').textContent=fusionBlocked
+  ?'Fusion blocked: the vesicle can approach, but this model cannot form a pore.'
+  :'Fusion permitted: after approach, a pore can form.';
+ $('trialEvidence').textContent=blockedObserved
+  ?(stage===3?'Both conditions observed: blocked fusion kept cargo inside; permitted fusion released it.':'Blocked condition observed: cargo stayed inside. Now allow fusion and release cargo.')
+  :(stage===3?'You observed release. Select Start a new trial, then block fusion to compare before continuing.':'Evidence: first block fusion, approach, and test the blocked condition.');
+ $('predictionCheck').textContent=!prediction
+  ?'Return to Teach to make a prediction before investigating.'
+  :!blockedObserved
+   ?'Your prediction: '+predictionLabels[prediction]+'. Test blocked fusion to compare your prediction with evidence.'
+   :prediction==='enclosed'
+    ?'Prediction check: supported by the blocked trial. Cargo remained enclosed after approach without an open pore.'
+    :'Prediction check: revise your idea. Cargo did not leave after approach when fusion was blocked. That is useful evidence, not a penalty.';
+ $('trialHint').textContent=blockedObserved
+  ?(stage===3?'Compare: both vesicles approached, but only the open-pore condition released cargo.':'Now allow fusion, then open the pore and release cargo to test what changes.')
+  :(stage===3?'You saw cargo release. Reset the trial, block fusion, approach, and test whether cargo remains enclosed.':'Try blocking fusion before approaching. Test the blocked condition to collect your first observation.');
+ $('blockedChecklist').textContent=blockedObserved?'✓ Blocked trial complete: cargo stayed enclosed.':'○ Block fusion and test whether cargo stays inside.';
+ $('permittedChecklist').textContent=stage===3?'✓ Permitted trial complete: cargo passed through the open pore.':'○ Allow fusion, open the pore, and release cargo.';
+ $('compareChecklist').textContent=blockedObserved&&stage===3?'Both trials complete. Select Next to compare your evidence.':'Finish both trials to unlock Feedback.';
+ $('modelStatus').textContent=[
+ 'Stage 0: Cargo is enclosed in a separate vesicle.',
+ 'Stage 1: Vesicle approaches the membrane; cargo remains inside.',
+ 'Stage 2: A simplified fusion pore is open; cargo is still inside.',
+ 'Stage 3: Protein cargo has passed through the pore.'
+ ][stage];
+ $('modelStageProgress').textContent=['Model step 1 of 4 · Cargo enclosed','Model step 2 of 4 · Vesicle approached','Model step 3 of 4 · Fusion pore open','Model step 4 of 4 · Cargo released'][stage];
+ $('diagram').setAttribute('aria-label', $('modelStatus').textContent+' '+(fusionBlocked?'Fusion blocked.':'Fusion permitted.'));
+ $('mechanismInsight').textContent=[
+  'Why it matters: the vesicle membrane encloses cargo. Without a continuous opening, cargo cannot cross to the outside.',
+  fusionBlocked?'Blocked fusion: the vesicle reached the membrane, but no pore formed. Test this condition to collect evidence.':'Approach alone is not release. Allowing fusion means a pore can form in the next step.',
+  'An open pore connects the vesicle interior with the outside. Cargo remains inside until it passes through that opening.',
+  'Cargo passed through the open pore. Compare this with blocked fusion to explain which change made release possible.'
+ ][stage];save();
+}
+function paintPrediction(){
+ document.querySelectorAll('[data-prediction]').forEach(b=>
+  b.setAttribute('aria-pressed',String(b.dataset.prediction===prediction)));
+ $('predictionFeedback').textContent=prediction
+  ?predictionResponses[prediction]
+  :'Choose a prediction before exploring. You can test it in the next screen.';
+ $('predictionRecall').textContent=prediction
+  ?'Your prediction: '+predictionLabels[prediction]+'. Compare both conditions to test it.'
+  :'Return to Teach to make your prediction.';
+ $('predictionCompare').textContent=prediction==='enclosed'
+  ?'Your prediction matched the blocked-fusion observation: without an open pore, cargo stayed enclosed.'
+  :prediction==='released'
+   ?'Your prediction was that cargo would leave immediately. The blocked-fusion trial showed otherwise. Revising a prediction using evidence is part of science.'
+   :'Return to Teach to make a prediction, then compare it with your investigation.';
+}
+function paintEvidence(){
+ document.querySelectorAll('[data-evidence]').forEach(b=>{
+  b.setAttribute('aria-pressed',String(b.dataset.evidence===evidenceChoice));
+ });
+ $('evidenceFeedback').textContent=evidenceChoice
+  ?evidenceResponses[evidenceChoice]
+  :'Select the supported observation to see feedback and continue.';
+}
+function paint(){
+ paintPrediction();paintEvidence();
+ $('explanationStatus').textContent=explanation.trim()
+  ?'Explanation saved in this browser tab. Not submitted or graded.'
+  :'Add your own explanation before Next. This is not graded.';
+ $('reflectionSummary').textContent=explanation.trim();
+ $('recapPrediction').textContent='Prediction: '+(predictionLabels[prediction]||'Not selected')+'.';
+ $('recapBlocked').textContent=blockedObserved?'Blocked fusion: cargo remained enclosed after the vesicle approached.':'Blocked fusion: not observed.';
+ $('recapAllowed').textContent=stage===3?'Permitted fusion: an open pore allowed cargo to exit.':'Permitted fusion: release not observed.';
+ document.querySelectorAll('[data-page]').forEach(s=>s.hidden=Number(s.dataset.page)!==page);
+ $('progress').textContent=['Teach','Do','Feedback','Next'][page]+' · '+(page+1)+' of 4';
+ $('back').disabled=page===0;$('next').hidden=page===3;
+ $('nextHint').textContent=page===0
+  ?(prediction?'Prediction recorded. Continue to the investigation.':'Choose a prediction to unlock Next.')
+  :page===1
+   ?(!blockedObserved?'Test the blocked-fusion condition before continuing.':stage!==3?'Open the pore and release cargo in the permitted trial.':'Both trials complete. Continue to compare your evidence.')
+   :page===2
+    ?(evidenceChoice!=='blocked'?'Select the observation supported by both trials.':!explanation.trim()?'Write your explanation to unlock Next.':'Evidence and explanation ready. Continue to finish.')
+    :'Draft investigation finished. This is not an LMS submission.';
+ $('next').disabled=(page===0&&!prediction)||(page===1&&(stage!==3||!blockedObserved))||(page===2&&(evidenceChoice!=='blocked'||!explanation.trim()));
+ if(page!==0)$('video').pause();$('main').scrollTop=0;save();
+}
+function go(n){
+ if(n===page)return;
+ $('resumeNotice').hidden=true;
+ page=n;paint();
+ // Move keyboard and screen-reader focus to the newly visible learning chunk.
+ // A tabindex=-1 heading is programmatically focusable without adding a tab stop.
+ const heading=document.querySelector('[data-page="'+page+'"] h1');
+ if(heading){
+  heading.setAttribute('tabindex','-1');
+  heading.focus({preventScroll:true});
+ }
+}
+document.querySelectorAll('[data-prediction]').forEach(b=>b.onclick=()=>{
+ if(page!==0)return;
+ prediction=b.dataset.prediction;paint();
+});
+$('next').onclick=()=>{if(page<3&&(page!==0||prediction)&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||(evidenceChoice==='blocked'&&explanation.trim())))go(page+1)};
+$('back').onclick=()=>{if(page>0)go(page-1)};
+$('dock').onclick=()=>{if(stage===0){stage=1;paintModel();paint()}};
+$('fusionToggle').onclick=()=>{
+ if(stage>1)return;
+ fusionBlocked=!fusionBlocked;paintModel();paint();
+};
+$('blockedTest').onclick=()=>{
+ if(stage!==1||!fusionBlocked)return;
+ blockedObserved=true;paintModel();paint();
+};
+$('fuse').onclick=()=>{if(stage===1&&!fusionBlocked){stage=2;paintModel();paint()}};
+$('release').onclick=()=>{if(stage===2){stage=3;paintModel();paint()}};
+$('reset').onclick=()=>{stage=0;fusionBlocked=false;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint()};
+$('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();go(1)};
+$('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;prediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();go(0)};
+$('explanation').addEventListener('input',()=>{
+ explanation=$('explanation').value.slice(0,500);
+ $('explanationStatus').textContent=explanation.trim()
+  ?'Explanation saved in this browser tab. Not submitted or graded.'
+  :'Add your own explanation before Next. This is not graded.';
+ $('next').disabled=page===2&&(evidenceChoice!=='blocked'||!explanation.trim());
+ save();
+});
+document.querySelectorAll('[data-evidence]').forEach(b=>b.onclick=()=>{
+ if(page!==2||stage!==3||!blockedObserved)return;
+ evidenceChoice=b.dataset.evidence;paint();
+});
+let previousCheckpointPhase='';
+function updateVideoTimeline(){
+ const v=$('video'),t=$('videoTimeline');
+ if(v.hidden||!Number.isFinite(v.duration)||v.duration<=0){t.hidden=true;return}
+ t.hidden=false;
+ const seconds=Math.min(v.duration,Math.max(0,v.currentTime||0));
+ const checkpoint=seconds<15?'Next checkpoint: 15 seconds':seconds<23.5?'Next checkpoint: 23.5 seconds':'Both checkpoint positions reached';
+ t.textContent='Video '+Math.floor(seconds)+' of '+Math.round(v.duration)+' seconds · '+checkpoint+'. Use video controls to pause or rewind.';
+}
+$('video').addEventListener('timeupdate',updateVideoTimeline);
+$('video').addEventListener('loadedmetadata',updateVideoTimeline);
+function videoState(s){
+ const q=clipQuestions[Math.min(s.nextCheckpoint,clipQuestions.length-1)];
+ $('checkpointPrompt').textContent=q.prompt;
+ document.querySelectorAll('[data-choice]').forEach(b=>b.textContent=q[b.dataset.choice]);
+ const active=['question','feedback','replay'].includes(s.phase);
+ $('checkpointProgress').hidden=!active;
+ $('checkpointProgress').textContent='Video checkpoint '+(Math.min(s.nextCheckpoint+1,clipQuestions.length))+' of '+clipQuestions.length+' · '+(s.phase==='question'?'Choose an answer to continue.':s.phase==='replay'?'Rewatching; return when ready.':'Review feedback, then continue.');
+ const phaseKey=s.nextCheckpoint+':'+s.phase;
+ if(s.phase==='question'&&previousCheckpointPhase!==phaseKey){
+  requestAnimationFrame(()=>{if(!$('checkpoint').hidden)$('answers').querySelector('button')?.focus({preventScroll:true})});
+ }
+ previousCheckpointPhase=phaseKey;
+ $('checkpoint').hidden=!active;$('answers').hidden=s.phase!=='question';
+ if(s.phase==='question'){
+  $('clipFeedback').hidden=true;
+  $('clipFeedback').textContent='';
+ }else $('clipFeedback').hidden=false;
+ $('replay').hidden=s.phase!=='feedback';$('continue').hidden=s.phase!=='feedback';
+ $('returnCheckpoint').hidden=s.phase!=='replay';$('replayStatus').hidden=s.phase!=='replay';
+ $('play').hidden=!['ready','playing'].includes(s.phase);
+ $('play').textContent=s.phase==='ready'?'Play proof':'Resume proof';
+}
+document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{
+ const state=adapter?.getState();
+ if(!state||state.phase!=='question')return;
+ const q=clipQuestions[state.nextCheckpoint];
+ const correct=state.nextCheckpoint===0?'no':'yes';
+ $('clipFeedback').textContent=b.dataset.choice==='no'?q.feedbackNo:q.feedbackYes;
+ if(b.dataset.choice!==correct){
+  $('clipFeedback').hidden=false;
+  $('clipFeedback').textContent+=' Try another answer or rewatch the clip before continuing.';
+  return;
+ }
+ adapter.presentFeedback();
+});
+$('reviewVideo').onclick=()=>{go(0);$('proof').focus({preventScroll:true});};
+$('skipUnavailableVideo').onclick=()=>{if(!prediction){$('predictionFeedback').textContent='Choose a prediction above first, then continue to the investigation.';$('predictionChoices').querySelector('button')?.focus();return;}go(1);};
+$('play').onclick=()=>adapter?.play();$('replay').onclick=()=>adapter?.replay();
+$('returnCheckpoint').onclick=()=>adapter?.returnToFeedback();
+$('continue').onclick=()=>adapter?.continueVideo();
+$('proof').onchange=async e=>{
+ adapter?.destroy();adapter=null;if(url){URL.revokeObjectURL(url);url=null}
+ const v=$('video');v.pause();v.removeAttribute('src');v.load();v.hidden=true;updateVideoTimeline();
+ $('checkpoint').hidden=true;$('play').hidden=true;
+ const f=e.target.files?.[0];if(!f){$('mediaStatus').textContent='Video not attached.';return}
+ if(f.size<100||f.size>100*1024*1024){$('mediaStatus').textContent='Rejected: unexpected file size.';return}
+ $('mediaStatus').textContent='Verifying local original video hash…';
+ try{
+  const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await f.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('');
+  if(digest!==proofHash)throw new Error('File hash does not match the original producer proof');
+  url=URL.createObjectURL(f);v.src=url;
+  await new Promise((resolve,reject)=>{v.onloadedmetadata=resolve;v.onerror=()=>reject(new Error('Cannot decode MP4'));v.load()});
+  if(!Number.isFinite(v.duration)||Math.abs(v.duration-32)>.25)throw new Error('Unexpected proof duration');
+  adapter=attachCheckpointVideo({video:v,
+   spec:{lessonId:'inside-the-cell',clipId:'golgi-to-membrane-proof',contentVersion:'0.0.0-dev',
+    contentSha256:proofHash,durationSeconds:v.duration,checkpoints:[
+     {id:'closed-pore-prediction',atSeconds:15},
+     {id:'open-pore-prediction',atSeconds:23.5}
+    ]},
+   storage:sessionStorage,storageKey:'pp-draft-proof-'+proofHash.slice(0,16),
+   onState:videoState,onPlaybackError:()=>{$('mediaStatus').textContent='Playback failed: check codec support.'}});
+  v.hidden=false;updateVideoTimeline();$('mediaStatus').textContent='Original digest matched; 32-second metadata loaded. Checkpoints at 15 and 23.5 seconds. Playback and QA still unverified.';
+ }catch(err){$('mediaStatus').textContent='Media unavailable: '+err.message;v.hidden=true;if(url){URL.revokeObjectURL(url);url=null}}
+};
+window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
+try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
+ if(d&&Number.isInteger(d.page)&&d.page>=0&&d.page<=3&&Number.isInteger(d.stage)&&d.stage>=0&&d.stage<=3&&typeof d.fusionBlocked==='boolean'&&typeof d.blockedObserved==='boolean'&&!(d.stage>1&&d.fusionBlocked)&&!(d.page>1&&(d.stage!==3||!d.blockedObserved))&&
+ (d.evidenceChoice===undefined||d.evidenceChoice===null||Object.hasOwn(evidenceResponses,d.evidenceChoice))&&
+ (d.prediction===undefined||d.prediction===null||Object.hasOwn(predictionLabels,d.prediction))&&
+ (d.explanation===undefined||(typeof d.explanation==='string'&&d.explanation.length<=500))){
+ page=d.page===3&&(!d.evidenceChoice||!d.explanation?.trim())?2:d.page;
+ $('resumeNotice').hidden=false;
+ $('resumeNotice').textContent='Draft progress restored in this tab. Continue from your saved '+(['Teach','Do','Feedback','Next'][page])+' screen. This is not an LMS submission.';
+ if(page>0&&!d.prediction)page=0; // Earlier draft states must make the new prediction.
+ stage=d.stage;fusionBlocked=d.fusionBlocked;blockedObserved=d.blockedObserved;
+ prediction=d.prediction||null;
+ evidenceChoice=d.evidenceChoice||null;
+ explanation=d.explanation||'';$('explanation').value=explanation;
+ }}catch{}
+paintModel();paint();
+</script></body></html>

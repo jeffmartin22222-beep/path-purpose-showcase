@@ -1,0 +1,361 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Path + Purpose per-lesson competitive benchmark evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "lessonId",
+    "contentVersion",
+    "entrySha256",
+    "packageSha256",
+    "reviewedBy",
+    "reviewedAt",
+    "approval",
+    "superiorityClaim",
+    "comparisons",
+    "scores",
+    "rubricNotes",
+    "gaps",
+    "remediation",
+    "overallNotes",
+    "hardGates",
+    "qaGates",
+    "printEquivalents"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "lessonId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "contentVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entrySha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "packageSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "reviewedBy": {
+      "type": "string",
+      "minLength": 3
+    },
+    "reviewedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approval": {
+      "const": "approved"
+    },
+    "superiorityClaim": {
+      "const": "not_claimed"
+    },
+    "comparisons": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "provider",
+          "evidenceType",
+          "notes"
+        ],
+        "properties": {
+          "provider": {
+            "enum": [
+              "subject.com",
+              "schoolsplp-lincoln",
+              "edmentum",
+              "edgenuity"
+            ]
+          },
+          "evidenceType": {
+            "enum": [
+              "direct_observation",
+              "public_documentation",
+              "marketing_claim",
+              "unavailable"
+            ]
+          },
+          "referenceUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "checkedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 20
+          }
+        }
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visual",
+        "video",
+        "interactive",
+        "solo",
+        "rigor",
+        "uxAccessibility",
+        "feedback"
+      ],
+      "properties": {
+        "visual": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 15
+        },
+        "video": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 15
+        },
+        "interactive": {
+          "type": "integer",
+          "minimum": 14,
+          "maximum": 20
+        },
+        "solo": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 15
+        },
+        "rigor": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 15
+        },
+        "uxAccessibility": {
+          "type": "integer",
+          "minimum": 7,
+          "maximum": 10
+        },
+        "feedback": {
+          "type": "integer",
+          "minimum": 7,
+          "maximum": 10
+        }
+      }
+    },
+    "rubricNotes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visual",
+        "video",
+        "interactive",
+        "solo",
+        "rigor",
+        "uxAccessibility",
+        "feedback"
+      ],
+      "properties": {
+        "visual": {
+          "type": "string",
+          "minLength": 20
+        },
+        "video": {
+          "type": "string",
+          "minLength": 20
+        },
+        "interactive": {
+          "type": "string",
+          "minLength": 20
+        },
+        "solo": {
+          "type": "string",
+          "minLength": 20
+        },
+        "rigor": {
+          "type": "string",
+          "minLength": 20
+        },
+        "uxAccessibility": {
+          "type": "string",
+          "minLength": 20
+        },
+        "feedback": {
+          "type": "string",
+          "minLength": 20
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 10
+      }
+    },
+    "remediation": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 10
+      }
+    },
+    "overallNotes": {
+      "type": "string",
+      "minLength": 20
+    },
+    "hardGates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "soloAsynchronous",
+        "noPeerDependency",
+        "deviceInternetOnly",
+        "printEquivalents",
+        "studentOnlyPublic"
+      ],
+      "properties": {
+        "soloAsynchronous": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "notes"
+          ],
+          "properties": {
+            "status": {
+              "const": "passed"
+            },
+            "notes": {
+              "type": "string",
+              "minLength": 20
+            }
+          }
+        },
+        "noPeerDependency": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "notes"
+          ],
+          "properties": {
+            "status": {
+              "const": "passed"
+            },
+            "notes": {
+              "type": "string",
+              "minLength": 20
+            }
+          }
+        },
+        "deviceInternetOnly": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "notes"
+          ],
+          "properties": {
+            "status": {
+              "const": "passed"
+            },
+            "notes": {
+              "type": "string",
+              "minLength": 20
+            }
+          }
+        },
+        "printEquivalents": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "notes"
+          ],
+          "properties": {
+            "status": {
+              "const": "passed"
+            },
+            "notes": {
+              "type": "string",
+              "minLength": 20
+            }
+          }
+        },
+        "studentOnlyPublic": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "notes"
+          ],
+          "properties": {
+            "status": {
+              "const": "passed"
+            },
+            "notes": {
+              "type": "string",
+              "minLength": 20
+            }
+          }
+        }
+      }
+    },
+    "qaGates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content",
+        "pedagogy",
+        "technical",
+        "experience"
+      ],
+      "properties": {
+        "content": {
+          "const": "passed"
+        },
+        "pedagogy": {
+          "const": "passed"
+        },
+        "technical": {
+          "const": "passed"
+        },
+        "experience": {
+          "const": "passed"
+        }
+      }
+    },
+    "printEquivalents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lesson",
+        "unit",
+        "course"
+      ],
+      "properties": {
+        "lesson": {
+          "type": "string",
+          "pattern": "^lessons/[a-z0-9-]+/print/[a-zA-Z0-9._/-]+\\.html$"
+        },
+        "unit": {
+          "type": "string",
+          "pattern": "^lessons/[a-z0-9-]+/print/[a-zA-Z0-9._/-]+\\.html$"
+        },
+        "course": {
+          "type": "string",
+          "pattern": "^lessons/[a-z0-9-]+/print/[a-zA-Z0-9._/-]+\\.html$"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,76 @@
+name: Validate curriculum catalog
+on:
+  push:
+    branches: [main, feature/qa-gated-publishing]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: curriculum-qa-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check producer review PR boundary guard syntax
+        run: node --check scripts/validate-review-pr-diff.mjs
+      - name: Reject unauthorized producer review PR file changes
+        if: github.event_name == 'pull_request' && github.base_ref == 'feature/qa-gated-publishing'
+        env:
+          PP_REVIEW_HEAD_REF: ${{ github.head_ref }}
+          PP_REVIEW_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PP_REVIEW_BASE_REF: ${{ github.base_ref }}
+          PP_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PP_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/validate-review-pr-diff.mjs
+      - name: Check import tool syntax
+        run: node --check scripts/import-approved-package.mjs
+      - name: Check symlink-safe import path syntax
+        run: node --check scripts/safe-import-path.mjs
+      - name: Check private source containment syntax
+        run: node --check scripts/safe-import-source.mjs
+      - name: Check reviewed-package staging tool syntax
+        run: node --check scripts/stage-reviewed-package.mjs
+      - name: Check private bundle fingerprint tool syntax
+        run: node --check scripts/fingerprint-reviewed-bundle.mjs
+      - name: Check signed producer handoff verifier syntax
+        run: node --check scripts/verify-signed-handoff.mjs
+      - name: Check private producer signer syntax
+        run: node --check scripts/sign-private-handoff.mjs
+      - name: Check pinned producer key reader syntax
+        run: node --check scripts/read-private-signing-key.mjs
+      - name: Check private replay ledger syntax
+        run: node --check scripts/private-handoff-ledger.mjs
+      - name: Check read-only private runner readiness syntax
+        run: node --check scripts/check-private-runner-readiness.mjs
+      - name: Check explicit private ledger bootstrap syntax
+        run: node --check scripts/init-private-handoff-ledger.mjs
+      - name: Check competitive benchmark validator syntax
+        run: node --check scripts/validate-benchmark.mjs
+      - name: Run QA gate negative and positive tests
+        run: node --test tests/*.test.mjs
+      - name: Verify approved catalog and evidence integrity
+        run: node scripts/validate-catalog.mjs
+      - name: Reject synthetic review evidence in public catalog
+        run: node scripts/reject-synthetic-evidence.mjs
+      - name: Install Chromium and WebKit for mobile browser smoke tests
+        run: |
+          npm install --no-save --no-package-lock playwright@1.56.1
+          npx playwright install --with-deps chromium webkit
+      - name: Exercise development-only Biology player in Chromium and WebKit
+        run: node tests/flagship-player-browser.mjs
+      - name: Exercise Chromium phone and tablet layouts
+        run: node tests/browser-smoke.mjs
+      - name: Exercise WebKit phone and tablet layouts (emulated, not physical iOS)
+        env:
+          SHOWCASE_BROWSER: webkit
+        run: node tests/browser-smoke.mjs
+      - name: Verify nonempty catalog on both engines and reject unsafe lesson dependencies
+        run: node tests/browser-fixture.mjs
