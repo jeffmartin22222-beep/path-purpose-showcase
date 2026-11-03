@@ -70,6 +70,7 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <g id="released" fill="#ebc9ff" hidden><circle cx="141" cy="25" r="5"/><circle cx="172" cy="29" r="5"/><circle cx="199" cy="25" r="5"/></g>
 <text x="10" y="20">Outside cell</text><text x="10" y="146">Cell interior</text></svg>
 <p id="modelStatus" role="status" aria-live="polite"></p>
+<p id="modelStageProgress" class="small" role="status" aria-live="polite">Model step 1 of 4 · Cargo enclosed</p>
 <p id="mechanismInsight" class="small" aria-live="polite">Why it matters: a vesicle membrane separates cargo from the outside of the cell. Approaching the plasma membrane alone does not create an exit route.</p>
 <div class="actions"><button id="fusionToggle" class="secondary" aria-pressed="false" aria-describedby="conditionStatus">Block fusion</button><button id="blockedTest" class="secondary" disabled>Test blocked fusion</button></div>
 <p id="conditionStatus" class="small">Fusion permitted. A pore can form after approach.</p>
@@ -181,6 +182,8 @@ function paintModel(){
  'Stage 2: A simplified fusion pore is open; cargo is still inside.',
  'Stage 3: Protein cargo has passed through the pore.'
  ][stage];
+ $('modelStageProgress').textContent=['Model step 1 of 4 · Cargo enclosed','Model step 2 of 4 · Vesicle approached','Model step 3 of 4 · Fusion pore open','Model step 4 of 4 · Cargo released'][stage];
+ $('diagram').setAttribute('aria-label', $('modelStatus').textContent+' '+(fusionBlocked?'Fusion blocked.':'Fusion permitted.'));
  $('mechanismInsight').textContent=[
   'Why it matters: the vesicle membrane encloses cargo. Without a continuous opening, cargo cannot cross to the outside.',
   fusionBlocked?'Blocked fusion: the vesicle reached the membrane, but no pore formed. Test this condition to collect evidence.':'Approach alone is not release. Allowing fusion means a pore can form in the next step.',
