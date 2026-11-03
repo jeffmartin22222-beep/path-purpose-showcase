@@ -248,7 +248,10 @@ function videoState(s){
  document.querySelectorAll('[data-choice]').forEach(b=>b.textContent=q[b.dataset.choice]);
  const active=['question','feedback','replay'].includes(s.phase);
  $('checkpoint').hidden=!active;$('answers').hidden=s.phase!=='question';
- $('clipFeedback').hidden=s.phase==='question';
+ if(s.phase==='question'){
+  $('clipFeedback').hidden=true;
+  $('clipFeedback').textContent='';
+ }else $('clipFeedback').hidden=false;
  $('replay').hidden=s.phase!=='feedback';$('continue').hidden=s.phase!=='feedback';
  $('returnCheckpoint').hidden=s.phase!=='replay';$('replayStatus').hidden=s.phase!=='replay';
  $('play').hidden=!['ready','playing'].includes(s.phase);
@@ -258,7 +261,13 @@ document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{
  const state=adapter?.getState();
  if(!state||state.phase!=='question')return;
  const q=clipQuestions[state.nextCheckpoint];
+ const correct=state.nextCheckpoint===0?'no':'yes';
  $('clipFeedback').textContent=b.dataset.choice==='no'?q.feedbackNo:q.feedbackYes;
+ if(b.dataset.choice!==correct){
+  $('clipFeedback').hidden=false;
+  $('clipFeedback').textContent+=' Try another answer or rewatch the clip before continuing.';
+  return;
+ }
  adapter.presentFeedback();
 });
 $('play').onclick=()=>adapter?.play();$('replay').onclick=()=>adapter?.replay();
