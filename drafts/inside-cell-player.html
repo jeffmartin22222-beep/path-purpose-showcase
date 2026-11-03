@@ -75,10 +75,10 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <p>Investigate two conditions: block fusion to test whether touching the membrane releases cargo, then allow fusion and compare the outcome. All controls work with touch or keyboard.</p>
 <div class="panel">
 <svg id="diagram" viewBox="0 0 340 155" role="img" aria-label="Conceptual exocytosis: vesicle, cell membrane, pore and protein cargo">
-<rect width="340" height="105" y="50" fill="#194b60"/><path d="M0 50 H340" stroke="#77e2d3" stroke-width="8"/>
-<g id="vesicle" transform="translate(0 8)"><circle cx="170" cy="106" r="29" fill="#28485e" stroke="#f1b56f" stroke-width="6"/>
+<rect width="340" height="105" y="50" fill="#194b60"/><path id="membrane" d="M0 50 H340" stroke="#77e2d3" stroke-width="8"/>
+<g id="vesicle" transform="translate(0 8)"><circle id="vesicleMembrane" cx="170" cy="106" r="29" fill="#28485e" stroke="#f1b56f" stroke-width="6"/>
 <g id="cargo" fill="#ebc9ff"><circle cx="156" cy="99" r="5"/><circle cx="180" cy="100" r="5"/><circle cx="170" cy="117" r="5"/></g></g>
-<rect id="pore" x="156" y="44" width="28" height="14" fill="#092333" hidden/>
+<g id="pore" hidden><path d="M156 50 V77 M184 50 V77" stroke="#f1b56f" stroke-width="5" fill="none"/><path d="M158 48 H182 V77 H158 Z" fill="#28485e"/></g>
 <g id="released" fill="#ebc9ff" hidden><circle cx="141" cy="25" r="5"/><circle cx="172" cy="29" r="5"/><circle cx="199" cy="25" r="5"/></g>
 <text x="10" y="20">Outside cell</text><text x="10" y="146">Cell interior</text></svg>
 <p id="modelStatus" role="status" aria-live="polite"></p>
@@ -191,6 +191,11 @@ function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusion
 function paintModel(){
  $('vesicle').setAttribute('transform',stage===0?'translate(0 8)':'translate(0 -27)');
  $('pore').hidden=stage<2;$('released').hidden=stage<3;$('cargo').hidden=stage===3;
+ // The membrane is continuous before fusion; after fusion it has a visible opening.
+ $('membrane').setAttribute('d',stage>=2?'M0 50 H156 M184 50 H340':'M0 50 H340');
+ // Open the vesicle rim at the top as well, rather than drawing a pore over two intact membranes.
+ $('vesicleMembrane').setAttribute('stroke-dasharray',stage>=2?'145 38':'none');
+ $('vesicleMembrane').setAttribute('transform',stage>=2?'rotate(-64 170 106)':'');
  $('dock').disabled=stage!==0;$('fuse').disabled=stage!==1||fusionBlocked;$('release').disabled=stage!==2;
  $('fusionToggle').disabled=stage>1;
  $('fusionToggle').setAttribute('aria-pressed',String(fusionBlocked));
