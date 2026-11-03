@@ -279,9 +279,9 @@ function paint(){
   :page===1
    ?(!blockedObserved?'Test the blocked-fusion condition before continuing.':stage!==3?'Open the pore and release cargo in the permitted trial.':'Both trials complete. Continue to compare your evidence.')
    :page===2
-    ?(evidenceChoice!=='blocked'?'Select the observation supported by both trials.':revisedPrediction===null?'Record your revised prediction before continuing.':!explanationReady()?'Write your explanation to unlock Next.':'Evidence and explanation ready. Continue to finish.')
+    ?(evidenceChoice!=='blocked'?'Select the observation supported by both trials.':revisedPrediction===null?'Record your revised prediction before continuing.':revisedPrediction!=='enclosed'?'Use the blocked-fusion observation to revise your prediction before continuing.':!explanationReady()?'Write your explanation to unlock Next.':'Evidence and explanation ready. Continue to finish.')
     :'Draft investigation finished. This is not an LMS submission.';
- $('next').disabled=(page===0&&(!prediction||mediaIncomplete()))||(page===1&&(stage!==3||!blockedObserved))||(page===2&&(evidenceChoice!=='blocked'||revisedPrediction===null||!explanationReady()));
+ $('next').disabled=(page===0&&(!prediction||mediaIncomplete()))||(page===1&&(stage!==3||!blockedObserved))||(page===2&&(evidenceChoice!=='blocked'||revisedPrediction!=='enclosed'||!explanationReady()));
  if(page!==0)$('video').pause();$('main').scrollTop=0;save();
 }
 function go(n){
@@ -323,7 +323,7 @@ $('explanation').addEventListener('input',()=>{
  $('explanationStatus').textContent=explanation.trim()
   ?explanationCheck(explanation)||'Evidence-based explanation saved in this tab. Not submitted or graded.'
   :'Add your own explanation before Next. This is not graded.';
- $('next').disabled=page===2&&(evidenceChoice!=='blocked'||revisedPrediction===null||!explanationReady());
+ $('next').disabled=page===2&&(evidenceChoice!=='blocked'||revisedPrediction!=='enclosed'||!explanationReady());
  save();
 });
 document.querySelectorAll('[data-revision]').forEach(b=>b.onclick=()=>{if(page!==2||stage!==3||!blockedObserved)return;revisedPrediction=b.dataset.revision;paint();});
