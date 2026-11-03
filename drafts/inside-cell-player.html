@@ -210,7 +210,17 @@ function paint(){
  $('next').disabled=(page===0&&!prediction)||(page===1&&(stage!==3||!blockedObserved))||(page===2&&(evidenceChoice!=='blocked'||!explanation.trim()));
  if(page!==0)$('video').pause();$('main').scrollTop=0;save();
 }
-function go(n){page=n;paint()}
+function go(n){
+ if(n===page)return;
+ page=n;paint();
+ // Move keyboard and screen-reader focus to the newly visible learning chunk.
+ // A tabindex=-1 heading is programmatically focusable without adding a tab stop.
+ const heading=document.querySelector('[data-page="'+page+'"] h1');
+ if(heading){
+  heading.setAttribute('tabindex','-1');
+  heading.focus({preventScroll:true});
+ }
+}
 document.querySelectorAll('[data-prediction]').forEach(b=>b.onclick=()=>{
  if(page!==0)return;
  prediction=b.dataset.prediction;paint();
