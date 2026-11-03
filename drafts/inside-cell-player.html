@@ -428,6 +428,13 @@ try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
  evidenceChoice=d.evidenceChoice||null;
  explanation=d.explanation||'';$('explanation').value=explanation;
  mediaRequired=d.mediaRequired===true;
+ // A local File object cannot survive a reload. Never restore Do/Feedback/Next
+ // while the selected video pathway lacks a reattached, verified MP4 adapter.
+ // This includes an already-finished page: completion cannot bypass the media gate.
+ if(mediaRequired&&page>0){
+  page=0;
+  $('resumeNotice').textContent='Video pathway requires the original MP4 again after refresh. Reload it and complete the checkpoints before continuing, or explicitly remove the video for the unverified draft-only investigation.';
+ }
  }}catch{}
 paintModel();paint();
 </script></body></html>
