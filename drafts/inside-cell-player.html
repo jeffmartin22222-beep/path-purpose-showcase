@@ -54,6 +54,8 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <label for="proof">Local MP4 proof (optional for draft walkthrough)</label>
 <input id="proof" type="file" accept=".mp4,video/mp4">
 <p id="mediaStatus" role="status" aria-live="polite" class="small">Video not attached. Media acceptance blocked.</p>
+<p class="small">No approved video on this device? You can still investigate the membrane model independently. The video checkpoints remain unverified.</p>
+<div class="actions"><button id="skipUnavailableVideo" class="secondary" type="button">Continue to hands-on investigation</button></div>
 <video id="video" playsinline controls preload="metadata" aria-label="Original Golgi-to-membrane exocytosis proof" aria-describedby="proofSequence" hidden></video>
 <div class="actions"><button id="play" hidden>Play proof</button></div>
 <div class="checkpoint" id="checkpoint" hidden>
@@ -324,6 +326,7 @@ document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{
  }
  adapter.presentFeedback();
 });
+$('skipUnavailableVideo').onclick=()=>{if(!prediction){$('predictionFeedback').textContent='Choose a prediction above first, then continue to the investigation.';$('predictionChoices').querySelector('button')?.focus();return;}go(1);};
 $('play').onclick=()=>adapter?.play();$('replay').onclick=()=>adapter?.replay();
 $('returnCheckpoint').onclick=()=>adapter?.returnToFeedback();
 $('continue').onclick=()=>adapter?.continueVideo();
