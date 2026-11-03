@@ -26,6 +26,7 @@ assert.match(playerSource,/proofHash='60f4e4a4427a0695807d84add4cc9d61c23a8306d9
 assert.match(playerSource,/Math\.abs\(v\.duration-32\)>\.25/);
 assert.match(playerSource,/atSeconds:15/);
 assert.match(playerSource,/atSeconds:23\.5/);
+assert.match(playerSource,/\$\('returnCheckpoint'\)\.onclick=\(\)=>adapter\?\.returnToFeedback\(\)/);
 assert.match(playerSource,/const key='pp-inside-cell-paged-v2-'\+lessonHash\.slice\(0,16\)/);
 let count=0;
 try{
@@ -45,6 +46,8 @@ try{
     assert.match(await page.locator('#proofSequence').innerText(),/32-second proof/);
     assert.match(await page.locator('#proofSequence').innerText(),/23–32 s/);
     assert.equal(await page.locator('#video').getAttribute('aria-describedby'),'proofSequence');
+    assert.equal(await page.locator('#returnCheckpoint').count(),1,'replay return control exists');
+    assert.equal(await page.locator('#returnCheckpoint').isVisible(),false,'return control is hidden before replay');
     assert.match(await page.locator('#mediaStatus').innerText(),/Video not attached/);
     assert.equal(await page.locator('#next').isDisabled(),true,'Teach must require a prediction');
     await page.locator('[data-prediction="released"]').click();
