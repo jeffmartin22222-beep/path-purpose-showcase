@@ -21,6 +21,14 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 .checkpoint{border:2px solid #80e6da;border-radius:12px;padding:9px;margin-top:8px}
 #progress{color:#bdd2dc;font-size:.78rem}#next{min-width:105px}
 @media(max-width:380px){header,footer{padding:8px 10px}main{padding:9px 10px}.panel{padding:9px;margin:7px 0}svg{height:125px}p{margin:6px 0}.tag{font-size:.62rem}}
+/* Keep Back and Next reachable on 320px phones, including Safari safe areas. */
+@media(max-width:420px){
+ footer{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+ footer>div:first-child{min-width:0}
+ footer .actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;width:100%}
+ footer .actions button{width:100%;min-width:0;min-height:44px}
+ #nextHint{margin:3px 0;max-height:3.5em;overflow-y:auto;overscroll-behavior:contain}
+}
 @media(max-height:610px){svg{height:112px}video{max-height:22dvh}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body><div id="app">
