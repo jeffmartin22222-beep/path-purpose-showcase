@@ -26,6 +26,7 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 </style></head><body><div id="app">
 <header><span class="brand">PATH + PURPOSE</span><span class="tag">UNAPPROVED · DEVELOPMENT ONLY</span></header>
 <main id="main">
+<p id="resumeNotice" class="small" role="status" aria-live="polite" hidden></p>
 <section class="step" data-page="0">
 <div class="eyebrow">Teach · 1 of 4</div><h1>Inside the Cell: How does cargo leave?</h1>
 <p>Some proteins travel inside membrane-bound vesicles toward the plasma membrane. What happens when a vesicle reaches that boundary? Make a prediction, then investigate.</p>
@@ -212,6 +213,7 @@ function paint(){
 }
 function go(n){
  if(n===page)return;
+ $('resumeNotice').hidden=true;
  page=n;paint();
  // Move keyboard and screen-reader focus to the newly visible learning chunk.
  // A tabindex=-1 heading is programmatically focusable without adding a tab stop.
@@ -323,6 +325,8 @@ try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
  (d.prediction===undefined||d.prediction===null||Object.hasOwn(predictionLabels,d.prediction))&&
  (d.explanation===undefined||(typeof d.explanation==='string'&&d.explanation.length<=500))){
  page=d.page===3&&(!d.evidenceChoice||!d.explanation?.trim())?2:d.page;
+ $('resumeNotice').hidden=false;
+ $('resumeNotice').textContent='Draft progress restored in this tab. Continue from your saved '+(['Teach','Do','Feedback','Next'][page])+' screen. This is not an LMS submission.';
  if(page>0&&!d.prediction)page=0; // Earlier draft states must make the new prediction.
  stage=d.stage;fusionBlocked=d.fusionBlocked;blockedObserved=d.blockedObserved;
  prediction=d.prediction||null;
