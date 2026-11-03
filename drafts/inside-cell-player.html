@@ -98,6 +98,7 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <div class="eyebrow">Next · 4 of 4</div><h1>Investigation finished</h1>
 <div class="panel"><p>You explored vesicle approach, pore formation, and protein release.</p>
 <p><strong>Reflect:</strong> Why would cargo remain enclosed if two membranes touch but no pore opens?</p>
+<div class="panel" aria-labelledby="recapTitle"><h2 id="recapTitle">Your investigation evidence</h2><p id="recapPrediction"></p><p id="recapBlocked"></p><p id="recapAllowed"></p></div>
 <p><strong>Your explanation:</strong> <span id="reflectionSummary"></span></p>
 <p class="muted small">Your explanation is saved only in this browser tab. This is not an LMS grade, submission, or verified completed lesson.</p>
 <button id="restart" class="secondary">Restart draft preview</button></div>
@@ -182,6 +183,9 @@ function paint(){
   ?'Explanation saved in this browser tab. Not submitted or graded.'
   :'Add your own explanation before Next. This is not graded.';
  $('reflectionSummary').textContent=explanation.trim();
+ $('recapPrediction').textContent='Prediction: '+(predictionLabels[prediction]||'Not selected')+'.';
+ $('recapBlocked').textContent=blockedObserved?'Blocked fusion: cargo remained enclosed after the vesicle approached.':'Blocked fusion: not observed.';
+ $('recapAllowed').textContent=stage===3?'Permitted fusion: an open pore allowed cargo to exit.':'Permitted fusion: release not observed.';
  document.querySelectorAll('[data-page]').forEach(s=>s.hidden=Number(s.dataset.page)!==page);
  $('progress').textContent=['Teach','Do','Feedback','Next'][page]+' · '+(page+1)+' of 4';
  $('back').disabled=page===0;$('next').hidden=page===3;
