@@ -1,0 +1,41 @@
+name: Verify live showcase deployment
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - .github/workflows/verify-live-showcase.yml
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+permissions:
+  contents: read
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check GitHub Pages serves current approved showcase shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED="$(sed -n 's/.*Preview build: <strong>\([^<]*\)<\/strong>.*/\1/p' index.html | head -1)"
+          if [ -z "$EXPECTED" ]; then echo "::error::No public build marker in index.html"; exit 1; fi
+          echo "Expected public build: $EXPECTED"
+          URL="https://jeffmartin22222-beep.github.io/path-purpose-showcase/"
+          for attempt in $(seq 1 12); do
+            echo "Attempt $attempt: checking $URL"
+            if curl --fail --location --silent --show-error --max-time 20 --retry 2 --retry-delay 2 "$URL?build-check=$GITHUB_SHA" -o /tmp/showcase-live.html; then
+              if grep -Fq "$EXPECTED" /tmp/showcase-live.html; then
+                echo "PASS: public Pages serves expected build $EXPECTED"
+                exit 0
+              fi
+              echo "Site reachable but marker not deployed yet"
+            else
+              echo "Site unreachable or HTTP error"
+            fi
+            sleep 30
+          done
+          echo "::error::Public GitHub Pages does not serve expected build $EXPECTED. Check Settings > Pages and deployment logs."
+          exit 1
