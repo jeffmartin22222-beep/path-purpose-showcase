@@ -62,6 +62,20 @@ try{
     await page.locator('#next').click();
     assert.match(await page.locator('#progress').innerText(),/Do/);
     assert.match(await page.locator('#predictionRecall').innerText(),/Cargo leaves immediately/);
+    // v1.7 regression: original prediction is immutable once investigation starts.
+    assert.equal(await page.locator('[data-prediction="enclosed"]').isDisabled(),true,
+      'Do must lock the original prediction');
+    await page.locator('#back').click();
+    assert.match(await page.locator('#progress').innerText(),/Teach/);
+    assert.equal(await page.locator('[data-prediction="enclosed"]').isDisabled(),true,
+      'Back to Teach must not unlock original prediction');
+    assert.equal(await page.locator('[data-prediction="released"]').getAttribute('aria-pressed'),'true');
+    await page.reload();
+    assert.equal(await page.locator('[data-prediction="enclosed"]').isDisabled(),true,
+      'Reload must preserve the original-prediction lock');
+    assert.equal(await page.locator('[data-prediction="released"]').getAttribute('aria-pressed'),'true');
+    await page.locator('#next').click();
+    assert.match(await page.locator('#progress').innerText(),/Do/);
     assert.equal(await page.locator('#next').isDisabled(),true);
     // Compare the blocked condition with permitted fusion before progressing.
     await page.locator('#fusionToggle').click();
