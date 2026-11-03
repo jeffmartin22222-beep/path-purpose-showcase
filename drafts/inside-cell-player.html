@@ -150,6 +150,9 @@ const clipQuestions=[
   feedbackYes:'Supported: the pore provides a route for cargo to pass. The model shows release after opening.'}
 ];
 let page=0,stage=0,fusionBlocked=false,blockedObserved=false,prediction=null,predictionLocked=false,evidenceChoice=null,explanation='',adapter=null,url=null;
+// A loaded proof cannot be bypassed before both checkpoint explanations and playback complete.
+// No media attached remains an explicitly unverified draft-only investigation path.
+const mediaIncomplete=()=>Boolean(adapter&&adapter.getState().phase!=='complete');
 const predictionLabels={enclosed:'Cargo stays inside the vesicle',released:'Cargo leaves immediately'};
 const predictionResponses={
  enclosed:'Prediction saved. Test it: compare a blocked pore with a permitted pore. A prediction is not a grade.',
@@ -239,17 +242,18 @@ function paint(){
  $('progress').textContent=['Teach','Do','Feedback','Next'][page]+' · '+(page+1)+' of 4';
  $('back').disabled=page===0;$('next').hidden=page===3;
  $('nextHint').textContent=page===0
-  ?(prediction?'Prediction recorded. Continue to the investigation.':'Choose a prediction to unlock Next.')
+  ?(prediction?(mediaIncomplete()?'Finish the loaded video and both checkpoints before continuing.':'Prediction recorded. Continue to the investigation.'):'Choose a prediction to unlock Next.')
   :page===1
    ?(!blockedObserved?'Test the blocked-fusion condition before continuing.':stage!==3?'Open the pore and release cargo in the permitted trial.':'Both trials complete. Continue to compare your evidence.')
    :page===2
     ?(evidenceChoice!=='blocked'?'Select the observation supported by both trials.':!explanation.trim()?'Write your explanation to unlock Next.':'Evidence and explanation ready. Continue to finish.')
     :'Draft investigation finished. This is not an LMS submission.';
- $('next').disabled=(page===0&&!prediction)||(page===1&&(stage!==3||!blockedObserved))||(page===2&&(evidenceChoice!=='blocked'||!explanation.trim()));
+ $('next').disabled=(page===0&&(!prediction||mediaIncomplete()))||(page===1&&(stage!==3||!blockedObserved))||(page===2&&(evidenceChoice!=='blocked'||!explanation.trim()));
  if(page!==0)$('video').pause();$('main').scrollTop=0;save();
 }
 function go(n){
  if(n===page)return;
+ if(page===0&&n>0&&mediaIncomplete())return;
  if(page===0&&n>0&&prediction){predictionLocked=true;save();}
  $('resumeNotice').hidden=true;
  page=n;paint();
@@ -265,7 +269,7 @@ document.querySelectorAll('[data-prediction]').forEach(b=>b.onclick=()=>{
  if(page!==0||predictionLocked)return;
  prediction=b.dataset.prediction;paint();
 });
-$('next').onclick=()=>{if(page<3&&(page!==0||prediction)&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||(evidenceChoice==='blocked'&&explanation.trim())))go(page+1)};
+$('next').onclick=()=>{if(page<3&&(page!==0||(prediction&&!mediaIncomplete()))&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||(evidenceChoice==='blocked'&&explanation.trim())))go(page+1)};
 $('back').onclick=()=>{if(page>0)go(page-1)};
 $('dock').onclick=()=>{if(stage===0){stage=1;paintModel();paint()}};
 $('fusionToggle').onclick=()=>{
@@ -316,6 +320,7 @@ function videoState(s){
   requestAnimationFrame(()=>{if(!$('checkpoint').hidden)$('answers').querySelector('button')?.focus({preventScroll:true})});
  }
  previousCheckpointPhase=phaseKey;
+ if(page===0)paint();
  $('checkpoint').hidden=!active;$('answers').hidden=s.phase!=='question';
  if(s.phase==='question'){
   $('clipFeedback').hidden=true;
@@ -340,12 +345,13 @@ document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{
  adapter.presentFeedback();
 });
 $('reviewVideo').onclick=()=>{go(0);$('proof').focus({preventScroll:true});};
-$('skipUnavailableVideo').onclick=()=>{if(!prediction){$('predictionFeedback').textContent='Choose a prediction above first, then continue to the investigation.';$('predictionChoices').querySelector('button')?.focus();return;}go(1);};
+$('skipUnavailableVideo').onclick=()=>{if(!prediction){$('predictionFeedback').textContent='Choose a prediction above first, then continue to the investigation.';$('predictionChoices').querySelector('button')?.focus();return;}
+ if(mediaIncomplete()){$('mediaStatus').textContent='Finish both checkpoints and the loaded video before investigating, or remove the video to use the unverified draft-only pathway.';$('video').focus();return;}go(1);};
 $('play').onclick=()=>adapter?.play();$('replay').onclick=()=>adapter?.replay();
 $('returnCheckpoint').onclick=()=>adapter?.returnToFeedback();
 $('continue').onclick=()=>adapter?.continueVideo();
 $('proof').onchange=async e=>{
- adapter?.destroy();adapter=null;if(url){URL.revokeObjectURL(url);url=null}
+ adapter?.destroy();adapter=null;paint();if(url){URL.revokeObjectURL(url);url=null}
  const v=$('video');v.pause();v.removeAttribute('src');v.load();v.hidden=true;updateVideoTimeline();
  $('checkpoint').hidden=true;$('play').hidden=true;
  const f=e.target.files?.[0];if(!f){$('mediaStatus').textContent='Video not attached.';return}
@@ -365,8 +371,8 @@ $('proof').onchange=async e=>{
     ]},
    storage:sessionStorage,storageKey:'pp-draft-proof-'+proofHash.slice(0,16),
    onState:videoState,onPlaybackError:()=>{$('mediaStatus').textContent='Playback failed: check codec support.'}});
-  v.hidden=false;updateVideoTimeline();$('mediaStatus').textContent='Original digest matched; 32-second metadata loaded. Checkpoints at 15 and 23.5 seconds. Playback and QA still unverified.';
- }catch(err){$('mediaStatus').textContent='Media unavailable: '+err.message;v.hidden=true;if(url){URL.revokeObjectURL(url);url=null}}
+  v.hidden=false;updateVideoTimeline();paint();$('mediaStatus').textContent='Original digest matched; 32-second metadata loaded. Checkpoints at 15 and 23.5 seconds. Playback and QA still unverified.';
+ }catch(err){$('mediaStatus').textContent='Media unavailable: '+err.message;v.hidden=true;adapter?.destroy();adapter=null;paint();if(url){URL.revokeObjectURL(url);url=null}}
 };
 window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
 try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
