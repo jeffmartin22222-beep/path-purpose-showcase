@@ -175,7 +175,11 @@ function explanationCheck(value){
  const blocked=/(block|prevent|without|closed|no pore|did not|didn't|could not|couldn't)/.test(t);
  const release=/(pore|fusion|opening|membrane)/.test(t);
  const observation=/(cargo|protein|vesicle|release|exit|inside|enclos|outside|pass|leave|left)/.test(t);
- if(t.length<35)return 'Add a complete explanation of what happened in the two conditions.';
+ const words=t.match(/[a-z]+/g)||[];
+ const unique=new Set(words.filter(w=>w.length>3));
+ if(t.length<35||words.length<9||unique.size<7)return 'Write a complete explanation in your own words comparing both conditions; repeated words are not enough.';
+ const permitted=/(allow|permit|open|unblock|normal|when fusion occurs|after fusion)/.test(t);
+ if(!permitted)return 'Compare the blocked condition with what happened when fusion was allowed.';
  if(!blocked)return 'Explain what happened when fusion was blocked or the pore stayed closed.';
  if(!release)return 'Name the pore or membrane fusion in your explanation.';
  if(!observation)return 'Describe what happened to the protein cargo in your observations.';
