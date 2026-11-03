@@ -50,7 +50,8 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <p id="checkpointPrompt"><strong>Prediction:</strong> Has cargo already exited before a fusion pore opens?</p>
 <div class="actions" id="answers"><button data-choice="no">No — cargo remains enclosed</button><button data-choice="yes">Yes — cargo has exited</button></div>
 <p id="clipFeedback" role="status" aria-live="polite" hidden></p>
-<div class="actions"><button id="replay" class="secondary" hidden>Rewatch</button><button id="continue" hidden>Continue video</button></div>
+<p id="replayStatus" role="status" aria-live="polite" class="small" hidden>Rewatching the clip. Return to this checkpoint whenever you are ready.</p>
+<div class="actions"><button id="replay" class="secondary" hidden>Rewatch</button><button id="returnCheckpoint" class="secondary" hidden aria-describedby="replayStatus">Return to checkpoint</button><button id="continue" hidden>Continue video</button></div>
 </div></div>
 <p class="muted small">The text sequence above is a draft visual description, not a synchronized caption track or a replacement for independent accessibility review.</p>
 </section>
@@ -228,6 +229,7 @@ function videoState(s){
  $('checkpoint').hidden=!active;$('answers').hidden=s.phase!=='question';
  $('clipFeedback').hidden=s.phase==='question';
  $('replay').hidden=s.phase!=='feedback';$('continue').hidden=s.phase!=='feedback';
+ $('returnCheckpoint').hidden=s.phase!=='replay';$('replayStatus').hidden=s.phase!=='replay';
  $('play').hidden=!['ready','playing'].includes(s.phase);
  $('play').textContent=s.phase==='ready'?'Play proof':'Resume proof';
 }
@@ -239,6 +241,7 @@ document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{
  adapter.presentFeedback();
 });
 $('play').onclick=()=>adapter?.play();$('replay').onclick=()=>adapter?.replay();
+$('returnCheckpoint').onclick=()=>adapter?.returnToFeedback();
 $('continue').onclick=()=>adapter?.continueVideo();
 $('proof').onchange=async e=>{
  adapter?.destroy();adapter=null;if(url){URL.revokeObjectURL(url);url=null}
