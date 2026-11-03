@@ -73,6 +73,7 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <div class="actions"><button id="dock">1. Approach</button><button id="fuse" disabled>2. Open pore</button><button id="release" disabled>3. Release</button></div>
 <p id="predictionRecall" class="small">Your prediction will appear here after you choose one on Teach.</p>
 <p id="trialEvidence" role="status" aria-live="polite">Evidence: Neither condition has been tested yet.</p>
+<div class="panel" aria-labelledby="trialChecklistTitle"><h2 id="trialChecklistTitle">Your investigation checklist</h2><p id="blockedChecklist">○ Block fusion and test whether cargo stays inside.</p><p id="permittedChecklist">○ Allow fusion, open the pore, and release cargo.</p><p id="compareChecklist" role="status" aria-live="polite">Finish both trials to unlock Feedback.</p></div>
 <div class="actions"><button id="reset" class="secondary">Start a new trial</button></div></div>
 <p class="muted small">This models event order, not lipid physics, kinetics, or the molecular machinery of membrane fusion. No special materials or partners are needed.</p>
 </section>
@@ -156,6 +157,9 @@ function paintModel(){
  $('trialEvidence').textContent=blockedObserved
   ?(stage===3?'Both conditions observed: blocked fusion kept cargo inside; permitted fusion released it.':'Blocked condition observed: cargo stayed inside. Now allow fusion and release cargo.')
   :(stage===3?'You observed release. Select Start a new trial, then block fusion to compare before continuing.':'Evidence: first block fusion, approach, and test the blocked condition.');
+ $('blockedChecklist').textContent=blockedObserved?'✓ Blocked trial complete: cargo stayed enclosed.':'○ Block fusion and test whether cargo stays inside.';
+ $('permittedChecklist').textContent=stage===3?'✓ Permitted trial complete: cargo passed through the open pore.':'○ Allow fusion, open the pore, and release cargo.';
+ $('compareChecklist').textContent=blockedObserved&&stage===3?'Both trials complete. Select Next to compare your evidence.':'Finish both trials to unlock Feedback.';
  $('modelStatus').textContent=[
  'Stage 0: Cargo is enclosed in a separate vesicle.',
  'Stage 1: Vesicle approaches the membrane; cargo remains inside.',
