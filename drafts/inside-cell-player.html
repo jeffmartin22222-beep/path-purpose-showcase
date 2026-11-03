@@ -54,6 +54,7 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <label for="proof">Local MP4 proof (optional for draft walkthrough)</label>
 <input id="proof" type="file" accept=".mp4,video/mp4">
 <p id="mediaStatus" role="status" aria-live="polite" class="small">Video not attached. Media acceptance blocked.</p>
+<p id="videoTimeline" class="small" role="status" aria-live="off" hidden>Video ready. Checkpoints at 15 and 23.5 seconds.</p>
 <p class="small">No approved video on this device? You can still investigate the membrane model independently. The video checkpoints remain unverified.</p>
 <div class="actions"><button id="skipUnavailableVideo" class="secondary" type="button">Continue to hands-on investigation</button></div>
 <video id="video" playsinline controls preload="metadata" aria-label="Original Golgi-to-membrane exocytosis proof" aria-describedby="proofSequence" hidden></video>
@@ -291,6 +292,16 @@ document.querySelectorAll('[data-evidence]').forEach(b=>b.onclick=()=>{
  evidenceChoice=b.dataset.evidence;paint();
 });
 let previousCheckpointPhase='';
+function updateVideoTimeline(){
+ const v=$('video'),t=$('videoTimeline');
+ if(v.hidden||!Number.isFinite(v.duration)||v.duration<=0){t.hidden=true;return}
+ t.hidden=false;
+ const seconds=Math.min(v.duration,Math.max(0,v.currentTime||0));
+ const checkpoint=seconds<15?'Next checkpoint: 15 seconds':seconds<23.5?'Next checkpoint: 23.5 seconds':'Both checkpoint positions reached';
+ t.textContent='Video '+Math.floor(seconds)+' of '+Math.round(v.duration)+' seconds · '+checkpoint+'. Use video controls to pause or rewind.';
+}
+$('video').addEventListener('timeupdate',updateVideoTimeline);
+$('video').addEventListener('loadedmetadata',updateVideoTimeline);
 function videoState(s){
  const q=clipQuestions[Math.min(s.nextCheckpoint,clipQuestions.length-1)];
  $('checkpointPrompt').textContent=q.prompt;
@@ -332,7 +343,7 @@ $('returnCheckpoint').onclick=()=>adapter?.returnToFeedback();
 $('continue').onclick=()=>adapter?.continueVideo();
 $('proof').onchange=async e=>{
  adapter?.destroy();adapter=null;if(url){URL.revokeObjectURL(url);url=null}
- const v=$('video');v.pause();v.removeAttribute('src');v.load();v.hidden=true;
+ const v=$('video');v.pause();v.removeAttribute('src');v.load();v.hidden=true;updateVideoTimeline();
  $('checkpoint').hidden=true;$('play').hidden=true;
  const f=e.target.files?.[0];if(!f){$('mediaStatus').textContent='Video not attached.';return}
  if(f.size<100||f.size>100*1024*1024){$('mediaStatus').textContent='Rejected: unexpected file size.';return}
@@ -351,7 +362,7 @@ $('proof').onchange=async e=>{
     ]},
    storage:sessionStorage,storageKey:'pp-draft-proof-'+proofHash.slice(0,16),
    onState:videoState,onPlaybackError:()=>{$('mediaStatus').textContent='Playback failed: check codec support.'}});
-  v.hidden=false;$('mediaStatus').textContent='Original digest matched; 32-second metadata loaded. Checkpoints at 15 and 23.5 seconds. Playback and QA still unverified.';
+  v.hidden=false;updateVideoTimeline();$('mediaStatus').textContent='Original digest matched; 32-second metadata loaded. Checkpoints at 15 and 23.5 seconds. Playback and QA still unverified.';
  }catch(err){$('mediaStatus').textContent='Media unavailable: '+err.message;v.hidden=true;if(url){URL.revokeObjectURL(url);url=null}}
 };
 window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
