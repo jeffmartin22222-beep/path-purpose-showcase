@@ -65,6 +65,20 @@ try {
     await page.reload();
     assert.equal(await page.locator('[data-page="3"]').isVisible(),true,'Completion persists after reload');
     assert.match(await page.locator('#recapPrediction').innerText(),/Original prediction: Cargo stays inside/i,'Completion preserves original prediction');
+    // A corrupted or stale completed record with weak evidence must return to Feedback.
+    await page.evaluate(() => {
+      const key=Object.keys(sessionStorage).find(k=>k.startsWith('pp-inside-cell-paged-v2-'));
+      assertKey(key);
+      const saved=JSON.parse(sessionStorage.getItem(key));
+      saved.explanation='cargo';
+      sessionStorage.setItem(key,JSON.stringify(saved));
+      function assertKey(value){if(!value)throw new Error('Missing draft progress key')}
+    });
+    await page.reload();
+    assert.equal(await page.locator('[data-page="2"]').isVisible(),true,'Invalid saved explanation must not restore completion');
+    await page.locator('#explanation').fill('When fusion was blocked, protein cargo stayed enclosed inside the vesicle even after approach. When fusion was permitted, the pore opened and protein cargo exited outside the cell.');
+    await page.locator('#next').click();
+    assert.equal(await page.locator('[data-page="3"]').isVisible(),true,'Corrected evidence restores completion');
     await page.locator('#back').click();
     await page.locator('#back').click();
     // Restarting trials must never let students rewrite the original prediction.
