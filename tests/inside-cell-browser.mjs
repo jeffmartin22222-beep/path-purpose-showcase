@@ -69,6 +69,13 @@ try {
     assert.match(await page.locator('#reflectionSummary').innerText(),/protein cargo exited/i,'Completion preserves written evidence');
     await page.reload();
     assert.equal(await page.locator('[data-page="3"]').isVisible(),true,'Completion persists after reload');
+    // The actual phone Home Screen must link into the draft player without claiming enrollment.
+    await page.goto('http://127.0.0.1:8765/');
+    assert.equal(await page.locator('#draft-home-start').getAttribute('href'),'drafts/inside-cell-player.html','Home Screen opens the real draft player');
+    assert.match(await page.locator('#draft-home-start').innerText(),/Review completed draft/,'Home Screen reflects saved draft completion');
+    assert.match(await page.locator('#draft-home-progress').innerText(),/not an LMS completion/i,'Draft status never claims an LMS completion');
+    await page.locator('#draft-home-start').click();
+    assert.equal(await page.locator('[data-page="3"]').isVisible(),true,'Home Screen returns to saved completed draft');
     assert.match(await page.locator('#recapPrediction').innerText(),/Original prediction: Cargo stays inside/i,'Completion preserves original prediction');
     // A corrupted or stale completed record with weak evidence must return to Feedback.
     await page.evaluate(() => {
