@@ -1,0 +1,27 @@
+name: Inside the Cell browser acceptance (draft)
+on:
+  push:
+    branches: [feature/qa-gated-publishing]
+    paths:
+      - 'drafts/inside-cell-player.html'
+      - 'scripts/flagship-video-*.mjs'
+      - 'tests/inside-cell-browser.mjs'
+      - '.github/workflows/inside-cell-browser.yml'
+  workflow_dispatch:
+jobs:
+  browser-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Serve draft and run real browser acceptance
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > /tmp/inside-cell-http.log 2>&1 &
+          node tests/inside-cell-browser.mjs
