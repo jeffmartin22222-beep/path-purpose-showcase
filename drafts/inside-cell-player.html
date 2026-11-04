@@ -84,7 +84,7 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <p id="modelStatus" role="status" aria-live="polite"></p>
 <p id="modelStageProgress" class="small" role="status" aria-live="polite">Model step 1 of 4 · Cargo enclosed</p>
 <p id="mechanismInsight" class="small" aria-live="polite">Why it matters: a vesicle membrane separates cargo from the outside of the cell. Approaching the plasma membrane alone does not create an exit route.</p>
-<div class="actions"><button id="fusionToggle" class="secondary" aria-pressed="false" aria-describedby="conditionStatus">Block fusion</button><button id="blockedTest" class="secondary" disabled>Test blocked fusion</button></div>
+<div class="actions"><button id="fusionToggle" class="secondary" aria-pressed="false" aria-describedby="conditionStatus">Block fusion</button><button id="blockedTest" class="secondary" disabled>Test blocked fusion</button><button id="permittedTrial" class="secondary" disabled>Start permitted-fusion trial</button></div>
 <p id="conditionStatus" class="small">Fusion permitted. A pore can form after approach.</p>
 <div class="actions"><button id="dock">1. Approach</button><button id="fuse" disabled>2. Open pore</button><button id="release" disabled>3. Release</button></div>
 <p id="predictionRecall" class="small">Your prediction will appear here after you choose one on Teach.</p>
@@ -197,15 +197,16 @@ function paintModel(){
  $('vesicleMembrane').setAttribute('stroke-dasharray',stage>=2?'145 38':'none');
  $('vesicleMembrane').setAttribute('transform',stage>=2?'rotate(-64 170 106)':'');
  $('dock').disabled=stage!==0;$('fuse').disabled=stage!==1||fusionBlocked;$('release').disabled=stage!==2;
- $('fusionToggle').disabled=stage>1;
+ $('fusionToggle').disabled=stage>1||(blockedObserved&&stage===1);
  $('fusionToggle').setAttribute('aria-pressed',String(fusionBlocked));
  $('fusionToggle').textContent=fusionBlocked?'Allow fusion':'Block fusion';
- $('blockedTest').disabled=stage!==1||!fusionBlocked;
+ $('blockedTest').disabled=stage!==1||!fusionBlocked||blockedObserved;
+ $('permittedTrial').disabled=!blockedObserved||stage!==1;
  $('conditionStatus').textContent=fusionBlocked
   ?'Fusion blocked: the vesicle can approach, but this model cannot form a pore.'
   :'Fusion permitted: after approach, a pore can form.';
  $('trialEvidence').textContent=blockedObserved
-  ?(stage===3?'Both conditions observed: blocked fusion kept cargo inside; permitted fusion released it.':'Blocked condition observed: cargo stayed inside. Now allow fusion and release cargo.')
+  ?(stage===3?'Both conditions observed: blocked fusion kept cargo inside; permitted fusion released it.':'Blocked condition observed: cargo stayed inside. Start the separate permitted-fusion trial.')
   :(stage===3?'You observed release. Select Start a new trial, then block fusion to compare before continuing.':'Evidence: first block fusion, approach, and test the blocked condition.');
  $('blockedPoreResult').textContent=blockedObserved?'Closed':'Not tested';
  $('blockedCargoResult').textContent=blockedObserved?'Remained enclosed':'Not observed';
@@ -311,12 +312,18 @@ $('next').onclick=()=>{if(page<3&&(page!==0||(prediction&&!mediaIncomplete()))&&
 $('back').onclick=()=>{if(page>0)go(page-1)};
 $('dock').onclick=()=>{if(stage===0){stage=1;paintModel();paint()}};
 $('fusionToggle').onclick=()=>{
- if(stage>1)return;
+ if(stage>1||(blockedObserved&&stage===1))return;
  fusionBlocked=!fusionBlocked;paintModel();paint();
 };
 $('blockedTest').onclick=()=>{
- if(stage!==1||!fusionBlocked)return;
+ if(stage!==1||!fusionBlocked||blockedObserved)return;
  blockedObserved=true;paintModel();paint();
+};
+// Separate the experimental conditions; retain blocked evidence.
+$('permittedTrial').onclick=()=>{
+ if(!blockedObserved||stage!==1)return;
+ stage=0;fusionBlocked=false;paintModel();paint();
+ $('dock').focus({preventScroll:true});
 };
 $('fuse').onclick=()=>{if(stage===1&&!fusionBlocked){stage=2;paintModel();paint()}};
 $('release').onclick=()=>{if(stage===2){stage=3;paintModel();paint()}};
