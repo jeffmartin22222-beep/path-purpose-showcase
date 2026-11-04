@@ -1,0 +1,46 @@
+// Real Chromium acceptance for the unapproved Inside the Cell draft.
+// Run: npm install --no-save playwright && npx playwright install chromium
+// Then serve repository root on localhost:8765 and run node tests/inside-cell-browser.mjs
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+
+const browser = await chromium.launch({headless:true});
+let passed=0;
+try {
+  for (const viewport of [{width:320,height:640},{width:768,height:1024}]) {
+    const context=await browser.newContext({viewport,deviceScaleFactor:2,hasTouch:true});
+    const page=await context.newPage();
+    const errors=[];
+    page.on('pageerror',error=>errors.push(error.message));
+    await page.goto('http://127.0.0.1:8765/drafts/inside-cell-player.html');
+    await page.locator('[data-prediction="enclosed"]').click();
+    assert.equal(await page.locator('#next').isDisabled(),true,'Video gate must require explicit draft bypass');
+    await page.locator('#skipUnavailableVideo').click();
+    assert.equal(await page.locator('#next').isDisabled(),false,'Explicit draft bypass unlocks Next');
+    await page.locator('#next').click();
+    assert.equal(await page.locator('[data-page="1"]').isVisible(),true,'Do screen appears');
+    const footer=await page.locator('footer').boundingBox();
+    const next=await page.locator('#next').boundingBox();
+    assert(footer && next && next.y>=0 && next.y+next.height<=viewport.height,
+      'Next stays inside viewport at '+viewport.width);
+    assert.equal(await page.locator('#fuse').isDisabled(),true,'Pore cannot open before blocked trial');
+    await page.locator('#fusionToggle').click();
+    await page.locator('#dock').click();
+    await page.locator('#blockedTest').click();
+    assert.match(await page.locator('#blockedCargoResult').innerText(),/enclosed/i);
+    assert.equal(await page.locator('#fuse').isDisabled(),true,'Blocked condition cannot open pore');
+    await page.locator('#permittedTrial').click();
+    await page.locator('#dock').click();
+    await page.locator('#fuse').click();
+    await page.locator('#release').click();
+    assert.match(await page.locator('#permittedCargoResult').innerText(),/released/i);
+    assert.equal(await page.locator('#next').isDisabled(),false,'Both trials unlock feedback');
+    await page.locator('#next').click();
+    assert.equal(await page.locator('[data-page="2"]').isVisible(),true);
+    assert.match(await page.locator('#predictionCompare').innerText(),/cargo stays/i);
+    assert.deepEqual(errors,[],'No uncaught browser errors');
+    passed++;
+    await context.close();
+  }
+  console.log('PASS: '+passed+' Chromium viewport journeys (320px phone, 768px tablet)');
+} finally {await browser.close();}
