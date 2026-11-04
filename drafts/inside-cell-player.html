@@ -341,7 +341,7 @@ $('permittedTrial').onclick=()=>{
 $('fuse').onclick=()=>{if(stage===1&&!fusionBlocked&&blockedObserved){stage=2;paintModel();paint()}};
 $('release').onclick=()=>{if(stage===2&&blockedObserved){stage=3;paintModel();paint()}};
 $('reset').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();$('dock').focus({preventScroll:true});};
-$('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(1)};
+$('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(1)};
 $('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(0)};
 $('explanation').addEventListener('input',()=>{
  explanation=$('explanation').value.slice(0,500);
