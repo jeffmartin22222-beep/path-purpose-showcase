@@ -307,7 +307,7 @@ document.querySelectorAll('[data-prediction]').forEach(b=>b.onclick=()=>{
  if(page!==0||predictionLocked)return;
  prediction=b.dataset.prediction;paint();
 });
-$('next').onclick=()=>{if(page<3&&(page!==0||(prediction&&!mediaIncomplete()))&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||(evidenceChoice==='blocked'&&revisedPrediction!==null&&explanationReady())))go(page+1)};
+$('next').onclick=()=>{if(page<3&&(page!==0||(prediction&&!mediaIncomplete()))&&(page!==1||(stage===3&&blockedObserved))&&(page!==2||(evidenceChoice==='blocked'&&revisedPrediction==='enclosed'&&explanationReady())))go(page+1)};
 $('back').onclick=()=>{if(page>0)go(page-1)};
 $('dock').onclick=()=>{if(stage===0){stage=1;paintModel();paint()}};
 $('fusionToggle').onclick=()=>{
