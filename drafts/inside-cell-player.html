@@ -30,6 +30,12 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
  #nextHint{margin:3px 0;max-height:none;overflow:visible;overflow-wrap:anywhere}
 }
 @media(max-height:610px){svg{height:112px}video{max-height:22dvh}}
+/* Keep experiment actions within reach while evidence and the model scroll on phones/iPads. */
+#experimentControls{position:sticky;bottom:0;z-index:3;background:#112e40;border:1px solid #6d98aa;border-radius:12px;padding:8px;box-shadow:0 -8px 20px #071827e6}
+#experimentControls .actions{margin:0}
+#experimentControls .actions+ .actions{margin-top:6px}
+#experimentControls button{min-width:0;overflow-wrap:anywhere}
+@media(max-width:420px){#experimentControls{padding:6px}#experimentControls .actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}#experimentControls button{padding:7px 3px;font-size:.76rem;line-height:1.2;min-height:48px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style></head><body><div id="app">
 <header><span class="brand">PATH + PURPOSE</span><span class="tag">UNAPPROVED · DEVELOPMENT ONLY</span></header>
@@ -84,9 +90,10 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <p id="modelStatus" role="status" aria-live="polite"></p>
 <p id="modelStageProgress" class="small" role="status" aria-live="polite">Model step 1 of 4 · Cargo enclosed</p>
 <p id="mechanismInsight" class="small" aria-live="polite">Why it matters: a vesicle membrane separates cargo from the outside of the cell. Approaching the plasma membrane alone does not create an exit route.</p>
+<div id="experimentControls" role="group" aria-label="Experiment controls — always available while investigating">
 <div class="actions"><button id="fusionToggle" class="secondary" aria-pressed="false" aria-describedby="conditionStatus">Block fusion</button><button id="blockedTest" class="secondary" disabled>Test blocked fusion</button><button id="permittedTrial" class="secondary" disabled>Start permitted-fusion trial</button></div>
 <p id="conditionStatus" class="small">Fusion permitted. A pore can form after approach.</p>
-<div class="actions"><button id="dock">1. Approach</button><button id="fuse" disabled>2. Open pore</button><button id="release" disabled>3. Release</button></div>
+<div class="actions"><button id="dock">1. Approach</button><button id="fuse" disabled>2. Open pore</button><button id="release" disabled>3. Release</button></div></div>
 <p id="predictionRecall" class="small">Your prediction will appear here after you choose one on Teach.</p>
 <p id="trialEvidence" role="status" aria-live="polite">Evidence: Neither condition has been tested yet.</p>
 <div class="panel" aria-labelledby="comparisonTitle"><h2 id="comparisonTitle">Compare your two trials</h2><table style="width:100%;border-collapse:collapse;text-align:left;font-size:.88rem"><thead><tr><th scope="col">Condition</th><th scope="col">Pore</th><th scope="col">Cargo result</th></tr></thead><tbody><tr><th scope="row">Fusion blocked</th><td id="blockedPoreResult">Not tested</td><td id="blockedCargoResult">Not observed</td></tr><tr><th scope="row">Fusion permitted</th><td id="permittedPoreResult">Not tested</td><td id="permittedCargoResult">Not observed</td></tr></tbody></table><p id="comparisonConclusion" class="small" role="status" aria-live="polite">Complete both trials to compare what actually changed.</p></div>
