@@ -54,6 +54,19 @@ try {
     assert.equal(await page.locator('[data-revision="enclosed"]').getAttribute('aria-pressed'),'false','Retry clears prior revised prediction');
     assert.equal(await page.locator('[data-evidence="blocked"]').getAttribute('aria-pressed'),'false','Retry clears previous evidence choice');
     assert.equal(await page.locator('#next').isDisabled(),true,'Retry requires new feedback evidence');
+    // Complete the entire four-page journey, not merely the experiment setup.
+    await page.locator('[data-revision="enclosed"]').click();
+    await page.locator('[data-evidence="blocked"]').click();
+    await page.locator('#explanation').fill('When fusion was blocked, protein cargo stayed enclosed inside the vesicle even after approach. When fusion was permitted, the pore opened and protein cargo exited outside the cell.');
+    assert.equal(await page.locator('#next').isDisabled(),false,'Causal two-condition explanation unlocks completion');
+    await page.locator('#next').click();
+    assert.equal(await page.locator('[data-page="3"]').isVisible(),true,'Completion screen is reachable');
+    assert.match(await page.locator('#reflectionSummary').innerText(),/protein cargo exited/i,'Completion preserves written evidence');
+    await page.reload();
+    assert.equal(await page.locator('[data-page="3"]').isVisible(),true,'Completion persists after reload');
+    assert.match(await page.locator('#recapPrediction').innerText(),/Original prediction: Cargo stays inside/i,'Completion preserves original prediction');
+    await page.locator('#back').click();
+    await page.locator('#back').click();
     // Restarting trials must never let students rewrite the original prediction.
     await page.locator('#back').click();
     await page.locator('#reset').click();
