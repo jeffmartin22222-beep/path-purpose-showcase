@@ -124,6 +124,17 @@ try{
     assert.equal(await page.locator('#next').isDisabled(),true,'Unsupported revised prediction must not complete');
     await page.locator('[data-revision="enclosed"]').click();
     assert.equal(await page.locator('[data-revision="enclosed"]').getAttribute('aria-pressed'),'true');
+    // Regression: a correct choice and revision must not turn meaningless writing into completion evidence.
+    await page.locator('#explanation').fill('x');
+    assert.equal(await page.locator('#next').isDisabled(),true,
+      'One-character explanation must never unlock completion');
+    assert.match(await page.locator('#explanationStatus').innerText(),/complete explanation/i);
+    await page.locator('#explanation').fill('cargo cargo cargo cargo pore pore pore blocked blocked blocked');
+    assert.equal(await page.locator('#next').isDisabled(),true,
+      'Repeated science keywords without reasoning must not unlock completion');
+    await page.reload();
+    assert.equal(await page.locator('#next').isDisabled(),true,
+      'Invalid explanation must remain blocked after reload');
     await page.locator('#explanation').fill('The blocked vesicle approached but cargo stayed inside. A pore was needed for release.');
     assert.match(await page.locator('#explanationStatus').innerText(),/saved in this browser tab/);
     assert.equal(await page.locator('#next').isEnabled(),true);
