@@ -4,14 +4,19 @@
 // Run: node tests/inside-cell-teach-gate-acceptance.mjs
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import {createServer} from 'node:http';
-import {resolve} from 'node:path';
+import {resolve, dirname} from 'node:path';
 import {chromium, webkit} from 'playwright';
 
-const html=readFileSync(resolve('drafts/inside-cell-player.html'));
-const server=createServer((_req,res)=>{
-  res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});
-  res.end(html);
+const root=resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const html=readFileSync(resolve(root,'drafts/inside-cell-player.html'));
+const adapter=readFileSync(resolve(root,'scripts/flagship-video-adapter.mjs'));
+const server=createServer((req,res)=>{
+  const isAdapter=req.url==='/scripts/flagship-video-adapter.mjs';
+  if(req.url!=='/'&&!isAdapter){res.writeHead(404);res.end('Not found');return;}
+  res.writeHead(200,{'Content-Type':isAdapter?'text/javascript; charset=utf-8':'text/html; charset=utf-8'});
+  res.end(isAdapter?adapter:html);
 });
 await new Promise(ok=>server.listen(0,'127.0.0.1',ok));
 const url='http://127.0.0.1:'+server.address().port+'/';
