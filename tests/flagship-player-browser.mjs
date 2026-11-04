@@ -120,10 +120,15 @@ try{
     assert.equal(await page.locator('[data-evidence="blocked"]').getAttribute('aria-pressed'),'true');
     assert.match(await page.locator('#evidenceFeedback').innerText(),/Supported/);
     assert.equal(await page.locator('#next').isDisabled(),true,'Own explanation required before Next');
+    await page.locator('[data-revision="released"]').click();
+    assert.equal(await page.locator('#next').isDisabled(),true,'Unsupported revised prediction must not complete');
+    await page.locator('[data-revision="enclosed"]').click();
+    assert.equal(await page.locator('[data-revision="enclosed"]').getAttribute('aria-pressed'),'true');
     await page.locator('#explanation').fill('The blocked vesicle approached but cargo stayed inside. A pore was needed for release.');
     assert.match(await page.locator('#explanationStatus').innerText(),/saved in this browser tab/);
     assert.equal(await page.locator('#next').isEnabled(),true);
     await page.reload();
+    assert.equal(await page.locator('[data-revision="enclosed"]').getAttribute('aria-pressed'),'true','Revised prediction persists after reload');
     assert.equal(await page.locator('#explanation').inputValue(),'The blocked vesicle approached but cargo stayed inside. A pore was needed for release.');
     assert.match(await page.locator('#evidenceFeedback').innerText(),/Supported/);
     assert.equal(await page.locator('#next').isEnabled(),true);
