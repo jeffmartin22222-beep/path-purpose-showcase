@@ -3,6 +3,7 @@ on:
   push:
     branches: [feature/qa-gated-publishing]
     paths:
+      - 'index.html'
       - 'drafts/inside-cell-player.html'
       - 'scripts/flagship-video-*.mjs'
       - 'tests/inside-cell-browser.mjs'
