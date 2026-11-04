@@ -38,6 +38,14 @@ try {
     await page.locator('#next').click();
     assert.equal(await page.locator('[data-page="2"]').isVisible(),true);
     assert.match(await page.locator('#predictionCompare').innerText(),/cargo stays/i);
+    // Restarting trials must never let students rewrite the original prediction.
+    await page.locator('#back').click();
+    await page.locator('#reset').click();
+    await page.locator('#back').click();
+    assert.equal(await page.locator('[data-prediction="enclosed"]').getAttribute('aria-pressed'),'true','Original prediction survives trial restart');
+    assert.equal(await page.locator('[data-prediction="released"]').isDisabled(),true,'Original prediction cannot be rewritten after restart');
+    await page.reload();
+    assert.equal(await page.locator('[data-prediction="released"]').isDisabled(),true,'Original prediction remains immutable after reload');
     assert.deepEqual(errors,[],'No uncaught browser errors');
     passed++;
     await context.close();
