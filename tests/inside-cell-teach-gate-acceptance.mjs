@@ -11,12 +11,12 @@ import {chromium, webkit} from 'playwright';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const html=readFileSync(resolve(root,'drafts/inside-cell-player.html'));
-const adapter=readFileSync(resolve(root,'scripts/flagship-video-adapter.mjs'));
+const modules=new Map(['flagship-video-adapter.mjs','flagship-video-checkpoint.mjs'].map(name=>['/scripts/'+name,readFileSync(resolve(root,'scripts',name))]));
 const server=createServer((req,res)=>{
-  const isAdapter=req.url==='/scripts/flagship-video-adapter.mjs';
-  if(req.url!=='/'&&!isAdapter){res.writeHead(404);res.end('Not found');return;}
-  res.writeHead(200,{'Content-Type':isAdapter?'text/javascript; charset=utf-8':'text/html; charset=utf-8'});
-  res.end(isAdapter?adapter:html);
+  const isModule=modules.has(req.url);
+  if(req.url!=='/'&&!isModule){res.writeHead(404);res.end('Not found');return;}
+  res.writeHead(200,{'Content-Type':isModule?'text/javascript; charset=utf-8':'text/html; charset=utf-8'});
+  res.end(isModule?modules.get(req.url):html);
 });
 await new Promise(ok=>server.listen(0,'127.0.0.1',ok));
 const url='http://127.0.0.1:'+server.address().port+'/';
