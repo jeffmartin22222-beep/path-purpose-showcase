@@ -38,6 +38,22 @@ try {
     await page.locator('#next').click();
     assert.equal(await page.locator('[data-page="2"]').isVisible(),true);
     assert.match(await page.locator('#predictionCompare').innerText(),/cargo stays/i);
+    // A new investigation must not inherit a revised prediction or evidence answer.
+    await page.locator('[data-revision="enclosed"]').click();
+    await page.locator('[data-evidence="blocked"]').click();
+    await page.locator('#retry').click();
+    assert.equal(await page.locator('[data-page="1"]').isVisible(),true,'Retry returns to Do');
+    await page.locator('#fusionToggle').click();
+    await page.locator('#dock').click();
+    await page.locator('#blockedTest').click();
+    await page.locator('#permittedTrial').click();
+    await page.locator('#dock').click();
+    await page.locator('#fuse').click();
+    await page.locator('#release').click();
+    await page.locator('#next').click();
+    assert.equal(await page.locator('[data-revision="enclosed"]').getAttribute('aria-pressed'),'false','Retry clears prior revised prediction');
+    assert.equal(await page.locator('[data-evidence="blocked"]').getAttribute('aria-pressed'),'false','Retry clears previous evidence choice');
+    assert.equal(await page.locator('#next').isDisabled(),true,'Retry requires new feedback evidence');
     // Restarting trials must never let students rewrite the original prediction.
     await page.locator('#back').click();
     await page.locator('#reset').click();
