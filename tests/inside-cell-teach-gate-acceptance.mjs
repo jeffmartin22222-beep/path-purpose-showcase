@@ -35,6 +35,24 @@ try {
       }else{
         console.log('PASS '+name+': Teach Next remains gated before approved instruction and checkpoint.');
       }
+      // An explicitly offered skip path must not bypass the same instructional gate.
+      await page.locator('#skipUnavailableVideo').click();
+      const skipEnabled=await page.locator('#next').isEnabled();
+      if(skipEnabled){
+        failures++;
+        console.error('FAIL '+name+': skipping unavailable media unlocks Teach Next without approved equivalent instruction/checkpoint.');
+      }else{
+        console.log('PASS '+name+': skipping unavailable media does not unlock Teach Next.');
+      }
+      // Do not mistake a disabled button for enforced routing: attempt navigation.
+      await page.locator('#next').evaluate(button=>button.click());
+      const visiblePage=await page.locator('section.step:not([hidden])').getAttribute('data-page');
+      if(visiblePage!=='0'){
+        failures++;
+        console.error('FAIL '+name+': programmatic Next click escaped Teach to page '+visiblePage+'.');
+      }else{
+        console.log('PASS '+name+': Teach remains active after attempted Next.');
+      }
       await context.close();
     }finally{await browser.close()}
   }
