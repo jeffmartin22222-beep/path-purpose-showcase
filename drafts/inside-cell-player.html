@@ -163,7 +163,7 @@ const clipQuestions=[
 let page=0,stage=0,fusionBlocked=false,blockedObserved=false,prediction=null,predictionLocked=false,revisedPrediction=null,evidenceChoice=null,explanation='',adapter=null,url=null,mediaRequired=false,draftBypass=false;
 // A loaded proof cannot be bypassed before both checkpoint explanations and playback complete.
 // No media attached remains an explicitly unverified draft-only investigation path.
-const mediaIncomplete=()=>mediaRequired?(!adapter||adapter.getState().phase!=='complete'):!draftBypass;
+const mediaIncomplete=()=>!mediaRequired||!adapter||adapter.getState().phase!=='complete';
 function paintMediaGate(){
  $('discardVideo').hidden=!mediaRequired;
  if(mediaRequired&&!adapter)$('mediaStatus').textContent='Video checkpoint pathway selected. Reload the verified original MP4 to resume; or explicitly remove it to use the unverified draft pathway.';
@@ -416,8 +416,10 @@ document.querySelectorAll('[data-choice]').forEach(b=>b.onclick=()=>{
  adapter.presentFeedback();
 });
 $('reviewVideo').onclick=()=>{go(0);$('proof').focus({preventScroll:true});};
-$('skipUnavailableVideo').onclick=()=>{if(!prediction){$('predictionFeedback').textContent='Choose a prediction above first, then continue to the investigation.';$('predictionChoices').querySelector('button')?.focus();return;}
- if(mediaRequired&&mediaIncomplete()){$('mediaStatus').textContent='Finish both checkpoints and the loaded video before investigating, or remove the video to use the unverified draft-only pathway.';$('video').focus();return;}if(!mediaRequired){draftBypass=true;save();}go(1);};
+$('skipUnavailableVideo').onclick=()=>{
+ $('mediaStatus').textContent='This draft cannot advance without an approved narrated/captioned lesson video and completed checkpoints. The silent draft-only bypass is disabled.';
+ $('proof').focus({preventScroll:true});
+};
 $('play').onclick=()=>adapter?.play();$('replay').onclick=()=>adapter?.replay();
 $('returnCheckpoint').onclick=()=>adapter?.returnToFeedback();
 $('continue').onclick=()=>adapter?.continueVideo();
