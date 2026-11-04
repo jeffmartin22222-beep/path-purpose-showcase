@@ -309,6 +309,8 @@ function go(n){
  if(page===0&&n>0&&prediction){predictionLocked=true;save();}
  $('resumeNotice').hidden=true;
  page=n;paint();
+ // Each paged lesson begins at its top; never carry the previous screen's scroll offset.
+ $('main').scrollTop=0;
  // Move keyboard and screen-reader focus to the newly visible learning chunk.
  // A tabindex=-1 heading is programmatically focusable without adding a tab stop.
  const heading=document.querySelector('[data-page="'+page+'"] h1');
