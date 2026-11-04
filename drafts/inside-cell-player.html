@@ -258,7 +258,7 @@ function paintPrediction(){
  document.querySelectorAll('[data-prediction]').forEach(b=>
   {b.setAttribute('aria-pressed',String(b.dataset.prediction===prediction));b.disabled=predictionLocked;});
  $('predictionFeedback').textContent=prediction
-  ?(predictionLocked?'Original prediction locked as evidence. Compare it with your investigation; restarting begins a new attempt.':predictionResponses[prediction])
+  ?(predictionLocked?'Original prediction locked as evidence, including after restarting the trials. Compare it with your investigation.':predictionResponses[prediction])
   :'Choose a prediction before exploring. You can test it in the next screen.';
  $('predictionRecall').textContent=prediction
   ?'Your prediction: '+predictionLabels[prediction]+'. Compare both conditions to test it.'
@@ -342,7 +342,7 @@ $('fuse').onclick=()=>{if(stage===1&&!fusionBlocked&&blockedObserved){stage=2;pa
 $('release').onclick=()=>{if(stage===2&&blockedObserved){stage=3;paintModel();paint()}};
 $('reset').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();$('dock').focus({preventScroll:true});};
 $('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(1)};
-$('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;prediction=null;predictionLocked=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(0)};
+$('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(0)};
 $('explanation').addEventListener('input',()=>{
  explanation=$('explanation').value.slice(0,500);
  $('explanationStatus').textContent=explanation.trim()
