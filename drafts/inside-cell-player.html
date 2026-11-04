@@ -93,7 +93,7 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 <p id="predictionCheck" class="small" role="status" aria-live="polite">Test your prediction by observing the blocked-fusion condition.</p>
 <p id="trialHint" class="small" role="status" aria-live="polite">Investigation tip: block fusion, approach the membrane, then test what happens to the cargo.</p>
 <div class="panel" aria-labelledby="trialChecklistTitle"><h2 id="trialChecklistTitle">Your investigation checklist</h2><p id="blockedChecklist">○ Block fusion and test whether cargo stays inside.</p><p id="permittedChecklist">○ Allow fusion, open the pore, and release cargo.</p><p id="compareChecklist" role="status" aria-live="polite">Finish both trials to unlock Feedback.</p></div>
-<div class="actions"><button id="reset" class="secondary">Start a new trial</button></div></div>
+<div class="actions"><button id="reset" class="secondary">Restart both trials</button></div><p class="small muted">Restarting clears observations from both conditions. Your original prediction stays locked so you can test it again without changing your starting idea.</p></div>
 <div class="actions"><button id="reviewVideo" class="secondary" type="button">Review video and checkpoints</button></div>
 <p class="muted small">This models event order, not lipid physics, kinetics, or the molecular machinery of membrane fusion. No special materials or partners are needed.</p>
 </section>
@@ -333,7 +333,7 @@ $('permittedTrial').onclick=()=>{
 };
 $('fuse').onclick=()=>{if(stage===1&&!fusionBlocked){stage=2;paintModel();paint()}};
 $('release').onclick=()=>{if(stage===2){stage=3;paintModel();paint()}};
-$('reset').onclick=()=>{stage=0;fusionBlocked=false;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint()};
+$('reset').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();$('dock').focus({preventScroll:true});};
 $('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(1)};
 $('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;prediction=null;predictionLocked=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(0)};
 $('explanation').addEventListener('input',()=>{
