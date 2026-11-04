@@ -209,7 +209,7 @@ function paintModel(){
  // Open the vesicle rim at the top as well, rather than drawing a pore over two intact membranes.
  $('vesicleMembrane').setAttribute('stroke-dasharray',stage>=2?'145 38':'none');
  $('vesicleMembrane').setAttribute('transform',stage>=2?'rotate(-64 170 106)':'');
- $('dock').disabled=stage!==0;$('fuse').disabled=stage!==1||fusionBlocked;$('release').disabled=stage!==2;
+ $('dock').disabled=stage!==0;$('fuse').disabled=stage!==1||fusionBlocked||!blockedObserved;$('release').disabled=stage!==2||!blockedObserved;
  $('fusionToggle').disabled=stage>1||(blockedObserved&&stage===1);
  $('fusionToggle').setAttribute('aria-pressed',String(fusionBlocked));
  $('fusionToggle').textContent=fusionBlocked?'Allow fusion':'Block fusion';
@@ -220,7 +220,7 @@ function paintModel(){
   :'Fusion permitted: after approach, a pore can form.';
  $('trialEvidence').textContent=blockedObserved
   ?(stage===3?'Both conditions observed: blocked fusion kept cargo inside; permitted fusion released it.':'Blocked condition observed: cargo stayed inside. Start the separate permitted-fusion trial.')
-  :(stage===3?'You observed release. Select Start a new trial, then block fusion to compare before continuing.':'Evidence: first block fusion, approach, and test the blocked condition.');
+  :(stage===3?'You observed release. Select Start a new trial, then block fusion to compare before continuing.':'Evidence: first block fusion, approach, and test the blocked condition. Opening the pore is locked until that observation is recorded.');
  $('blockedPoreResult').textContent=blockedObserved?'Closed':'Not tested';
  $('blockedCargoResult').textContent=blockedObserved?'Remained enclosed':'Not observed';
  $('permittedPoreResult').textContent=stage>=2?'Open':'Not yet opened';
@@ -235,7 +235,7 @@ function paintModel(){
     :'Prediction check: revise your idea. Cargo did not leave after approach when fusion was blocked. That is useful evidence, not a penalty.';
  $('trialHint').textContent=blockedObserved
   ?(stage===3?'Compare: both vesicles approached, but only the open-pore condition released cargo.':'Now allow fusion, then open the pore and release cargo to test what changes.')
-  :(stage===3?'You saw cargo release. Reset the trial, block fusion, approach, and test whether cargo remains enclosed.':'Try blocking fusion before approaching. Test the blocked condition to collect your first observation.');
+  :(stage===3?'You saw cargo release. Reset the trial, block fusion, approach, and test whether cargo remains enclosed.':'Block fusion first, approach, and test the blocked condition. The open-pore experiment unlocks after that observation.');
  $('blockedChecklist').textContent=blockedObserved?'✓ Blocked trial complete: cargo stayed enclosed.':'○ Block fusion and test whether cargo stays inside.';
  $('permittedChecklist').textContent=stage===3?'✓ Permitted trial complete: cargo passed through the open pore.':'○ Allow fusion, open the pore, and release cargo.';
  $('compareChecklist').textContent=blockedObserved&&stage===3?'Both trials complete. Select Next to compare your evidence.':'Finish both trials to unlock Feedback.';
@@ -338,8 +338,8 @@ $('permittedTrial').onclick=()=>{
  stage=0;fusionBlocked=false;paintModel();paint();
  $('dock').focus({preventScroll:true});
 };
-$('fuse').onclick=()=>{if(stage===1&&!fusionBlocked){stage=2;paintModel();paint()}};
-$('release').onclick=()=>{if(stage===2){stage=3;paintModel();paint()}};
+$('fuse').onclick=()=>{if(stage===1&&!fusionBlocked&&blockedObserved){stage=2;paintModel();paint()}};
+$('release').onclick=()=>{if(stage===2&&blockedObserved){stage=3;paintModel();paint()}};
 $('reset').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();$('dock').focus({preventScroll:true});};
 $('retry').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(1)};
 $('restart').onclick=()=>{stage=0;fusionBlocked=false;blockedObserved=false;prediction=null;predictionLocked=false;revisedPrediction=null;evidenceChoice=null;explanation='';$('explanation').value='';paintModel();paint();go(0)};
