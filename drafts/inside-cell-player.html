@@ -202,6 +202,15 @@ function explanationCheck(value){
 function explanationReady(){return !explanationCheck(explanation);}
 function save(){try{sessionStorage.setItem(key,JSON.stringify({page,stage,fusionBlocked,blockedObserved,prediction,predictionLocked,revisedPrediction,evidenceChoice,explanation,mediaRequired}))}catch{}}
 function paintModel(){
+ // Describe the observed model state to nonvisual learners; never rely on color or animation alone.
+ const modelDescription=stage===0
+  ?'Before approach: protein cargo is enclosed in a vesicle inside the cell; the plasma membrane is intact.'
+  :stage===1
+   ?(fusionBlocked?'Blocked fusion: vesicle touches the plasma membrane, but both membranes remain separate; no pore opens and cargo stays enclosed.':'Vesicle approaches the plasma membrane; cargo remains enclosed until a fusion pore opens.')
+   :stage===2
+    ?'Fusion permitted: a conceptual pore connects the vesicle lumen to the outside; cargo has not yet been released.'
+    :'Fusion permitted: cargo has passed through the open pore to the outside of the cell.';
+ $('diagram').setAttribute('aria-label',modelDescription);
  $('vesicle').setAttribute('transform',stage===0?'translate(0 8)':'translate(0 -27)');
  $('pore').hidden=stage<2;$('released').hidden=stage<3;$('cargo').hidden=stage===3;
  // The membrane is continuous before fusion; after fusion it has a visible opening.
