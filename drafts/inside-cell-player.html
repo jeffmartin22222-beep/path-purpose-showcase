@@ -119,7 +119,8 @@ svg text{font-size:12px;fill:white;font-family:system-ui}
 </div>
 <p id="evidenceFeedback" role="status" aria-live="polite">Select the supported observation to see feedback and continue.</p>
 <label for="explanation"><strong>Explain your reasoning:</strong> Why did blocking fusion help test whether approach alone releases cargo?</label>
-<textarea id="explanation" maxlength="500" rows="3" aria-describedby="explanationStatus" placeholder="I observed that…"></textarea>
+<p class="small" id="explanationGuide">Use evidence from both trials: What happened to <strong>protein cargo</strong> when the pore stayed closed? What changed when the pore opened? Explain why the comparison supports your conclusion. Your original prediction will not change.</p>
+<textarea id="explanation" maxlength="500" rows="3" aria-describedby="explanationGuide explanationStatus" placeholder="In the blocked trial, protein cargo… In the permitted trial…"></textarea>
 <p id="explanationStatus" role="status" aria-live="polite" class="small">Add your own explanation before Next. This is not graded.</p>
 </div>
 <button id="retry" class="secondary">Try the experiment again</button></div>
@@ -175,7 +176,9 @@ function explanationCheck(value){
  const t=value.toLowerCase().trim();
  const blocked=/(block|prevent|without|closed|no pore|did not|didn't|could not|couldn't)/.test(t);
  const release=/(pore|fusion|opening|membrane)/.test(t);
- const observation=/(cargo|protein|vesicle|release|exit|inside|enclos|outside|pass|leave|left)/.test(t);
+ const cargo=/(cargo|protein)/.test(t);
+ const retained=/(stay|stays|stayed|remain|remained|retain|retained|trap|trapped|inside|enclos|not leave|not exit|could not exit|cannot exit)/.test(t);
+ const exited=/(exit|exited|leave|left|release|released|outside|pass|passed|move out|moved out)/.test(t);
  const words=t.match(/[a-z]+/g)||[];
  const unique=new Set(words.filter(w=>w.length>3));
  if(t.length<35||words.length<9||unique.size<7)return 'Write a complete explanation in your own words comparing both conditions; repeated words are not enough.';
@@ -183,7 +186,10 @@ function explanationCheck(value){
  if(!permitted)return 'Compare the blocked condition with what happened when fusion was allowed.';
  if(!blocked)return 'Explain what happened when fusion was blocked or the pore stayed closed.';
  if(!release)return 'Name the pore or membrane fusion in your explanation.';
- if(!observation)return 'Describe what happened to the protein cargo in your observations.';
+ if(!cargo)return 'Name the protein cargo you tracked in both trials.';
+ if(!retained)return 'Describe how protein cargo stayed enclosed when fusion was blocked.';
+ if(!exited)return 'Describe how protein cargo exited after the pore opened.';
+ // These are formative writing cues, not a claim of automated scientific grading.
  return '';
 }
 function explanationReady(){return !explanationCheck(explanation);}
