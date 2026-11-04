@@ -15,7 +15,12 @@ try {
     await page.goto('http://127.0.0.1:8765/drafts/inside-cell-player.html');
     await page.locator('[data-prediction="enclosed"]').click();
     assert.equal(await page.locator('#next').isDisabled(),true,'Video gate must require explicit draft bypass');
+    await page.reload();
+    assert.equal(await page.locator('#next').isDisabled(),true,'Reload must not silently authorize a video bypass');
     await page.locator('#skipUnavailableVideo').click();
+    await page.locator('#back').click();
+    await page.reload();
+    assert.equal(await page.locator('#next').isDisabled(),false,'Explicit draft bypass persists after reload');
     assert.equal(await page.locator('#next').isDisabled(),false,'Explicit draft bypass unlocks Next');
     await page.locator('#next').click();
     assert.equal(await page.locator('[data-page="1"]').isVisible(),true,'Do screen appears');
