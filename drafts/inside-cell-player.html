@@ -447,11 +447,11 @@ $('proof').onchange=async e=>{
  }catch(err){$('mediaStatus').textContent='Media unavailable: '+err.message;v.hidden=true;adapter?.destroy();adapter=null;paint();if(url){URL.revokeObjectURL(url);url=null}}
 };
 $('discardVideo').onclick=()=>{
- adapter?.destroy();adapter=null;mediaRequired=false;
+ adapter?.destroy();adapter=null;mediaRequired=false;draftBypass=false;
  const v=$('video');v.pause();v.removeAttribute('src');v.load();v.hidden=true;
  if(url){URL.revokeObjectURL(url);url=null}
  $('proof').value='';$('checkpoint').hidden=true;$('play').hidden=true;
- $('mediaStatus').textContent='Video removed. Draft-only investigation available; video QA remains unverified.';
+ $('mediaStatus').textContent='Video removed. To continue without video, explicitly select the unverified draft-only investigation pathway.';
  save();paint();
 };
 window.addEventListener('pagehide',()=>{adapter?.destroy();if(url)URL.revokeObjectURL(url)});
@@ -471,6 +471,7 @@ try{const d=JSON.parse(sessionStorage.getItem(key)||'null');
  evidenceChoice=d.evidenceChoice||null;
  explanation=d.explanation||'';$('explanation').value=explanation;
  mediaRequired=d.mediaRequired===true;
+ draftBypass=!mediaRequired&&d.draftBypass===true;
  // A local File object cannot survive a reload. Never restore Do/Feedback/Next
  // while the selected video pathway lacks a reattached, verified MP4 adapter.
  // This includes an already-finished page: completion cannot bypass the media gate.
